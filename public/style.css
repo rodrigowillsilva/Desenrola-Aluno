@@ -1,0 +1,936 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: #cbd5e1;
+  color: #0f172a;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* Container Mobile-First */
+.mobile-shell {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.18);
+}
+
+/* Cabeçalho Superior do App */
+.app-header {
+  background: linear-gradient(135deg, #002b5c 0%, #004488 100%);
+  color: #ffffff;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+}
+
+.logo-icon {
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.brand h1 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.brand p {
+  font-size: 0.72rem;
+  color: #bfdbfe;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.btn-icon-header {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn-icon-logout {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+/* Faixa do Usuário Conectado */
+.session-banner {
+  background: #ffffff;
+  padding: 0.6rem 1.1rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.session-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.session-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.session-details strong {
+  font-size: 0.82rem;
+  color: #0f172a;
+}
+
+.session-details span {
+  font-size: 0.71rem;
+  color: #64748b;
+}
+
+/* Área Principal */
+.app-content {
+  flex: 1;
+  padding: 1rem 1rem 4.5rem 1rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Alertas estilo Toast Mobile */
+.toast-alert {
+  padding: 0.8rem 0.95rem;
+  border-radius: 12px;
+  margin-bottom: 0.95rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.35;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.alert-error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.alert-success {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+/* Card de Boas-vindas na Tela de Login */
+.hero-box {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  padding: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.hero-box h2 {
+  font-size: 1.02rem;
+  color: #1e3a8a;
+  margin-bottom: 0.25rem;
+}
+
+.hero-box p {
+  font-size: 0.8rem;
+  color: #2563eb;
+  line-height: 1.4;
+}
+
+/* Card Padrão Mobile */
+.mobile-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-card h3 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.8rem;
+}
+
+/* Campos de Formulário Mobile */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  margin-bottom: 0.8rem;
+  flex: 1;
+}
+
+.field-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.field label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  transition: border-color 0.15s;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.field input:disabled,
+.field select:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+}
+
+/* Botões Touch-Friendly */
+.btn {
+  min-height: 42px;
+  padding: 0.6rem 0.95rem;
+  border-radius: 11px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, opacity 0.15s;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-pill {
+  min-height: 36px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.btn-primary {
+  background-color: #003366;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #003366;
+  border: 1.5px solid #003366;
+}
+
+.btn-ghost {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.btn-danger {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.btn-success {
+  background-color: #15803d;
+  color: #ffffff;
+}
+
+.detail-status-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Resumo de Progresso do Aluno (Finalizadas | Fazendo | Ainda faltam) */
+.progress-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.summary-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.65rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.summary-box strong {
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.summary-box span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+.summary-done strong {
+  color: #15803d;
+}
+
+.summary-doing strong {
+  color: #1d4ed8;
+}
+
+.summary-todo strong {
+  color: #b45309;
+}
+
+.segmented-control {
+  display: flex;
+  background: #e2e8f0;
+  padding: 0.22rem;
+  border-radius: 10px;
+  margin-bottom: 0.9rem;
+  gap: 0.2rem;
+}
+
+.seg-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.42rem 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #475569;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.seg-btn.active {
+  background: #ffffff;
+  color: #003366;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.progresso-bloco {
+  margin-bottom: 1rem;
+}
+
+.badge-done {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-doing {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-todo {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.btn-back {
+  background: transparent;
+  border: none;
+  color: #003366;
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0.8rem 0;
+  color: #94a3b8;
+  font-size: 0.76rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.divider span {
+  padding: 0 0.7rem;
+}
+
+/* Acesso Rápido Demo */
+.quick-access-card {
+  background: #f1f5f9;
+  border-radius: 14px;
+  padding: 0.85rem;
+  text-align: center;
+}
+
+.quick-title {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.quick-Chips {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.chip {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.55rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+/* ========================================================================== */
+/* TELA INICIAL DO ALUNO: LISTA DE DISCIPLINAS                                */
+/* ========================================================================== */
+.section-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.section-top h2 {
+  font-size: 1.04rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.section-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.disciplinas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.35rem;
+}
+
+.disc-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #2563eb;
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+  transition: transform 0.1s, border-color 0.15s;
+}
+
+.disc-card:active {
+  transform: scale(0.99);
+}
+
+.disc-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.disc-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.disc-code {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.disc-room {
+  font-size: 0.72rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.disc-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.disc-schedule-summary {
+  font-size: 0.73rem;
+  color: #475569;
+}
+
+.disc-card-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.disc-faltas-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.disc-faltas-pill.alerta {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.disc-chevron {
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+}
+
+/* ========================================================================== */
+/* GRADE DE HORÁRIOS UNIFEI (SEGUNDA A SEXTA - 55 MINUTOS)                    */
+/* ========================================================================== */
+.timetable-section-header {
+  margin-top: 0.25rem;
+}
+
+.timetable-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.65rem;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  margin-bottom: 0.75rem;
+}
+
+.timetable-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.unifei-timetable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.68rem;
+}
+
+.unifei-timetable th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  padding: 0.4rem 0.15rem;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  font-size: 0.7rem;
+}
+
+.unifei-timetable th.col-time {
+  width: 66px;
+}
+
+.unifei-timetable td {
+  border: 1px solid #e2e8f0;
+  height: 30px;
+  padding: 0.15rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.unifei-timetable td.time-label {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.unifei-timetable tr.break-row td {
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.62rem;
+  font-weight: 600;
+  height: 20px;
+  padding: 0.1rem 0.3rem;
+  letter-spacing: 0.02em;
+}
+
+.slot-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 24px;
+  border-radius: 5px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.slot-empty {
+  color: #cbd5e1;
+  font-size: 0.6rem;
+}
+
+/* ========================================================================== */
+/* TELA ESPECÍFICA DA DISCIPLINA                                              */
+/* ========================================================================== */
+.detail-header-card {
+  padding: 1.1rem;
+}
+
+.detail-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+
+.disc-code-pill {
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.disc-ch-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.detail-title {
+  font-size: 1.06rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.85rem;
+  line-height: 1.3;
+}
+
+.detail-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.75rem;
+}
+
+.detail-info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.detail-info-item svg {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+/* Card de Controle de Faltas */
+.absence-card h3 {
+  margin-bottom: 0.15rem;
+}
+
+.absence-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.absence-counter-badge {
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 0.35rem 0.75rem;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.95rem;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.absence-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.absence-actions .btn {
+  flex: 1;
+}
+
+/* ========================================================================== */
+/* CARDS DE GESTÃO (USUÁRIOS E CURSOS)                                        */
+/* ========================================================================== */
+.sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.group-divider {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 0.38rem 0.7rem;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 0.2rem;
+}
+
+.item-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.9rem 0.95rem;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+}
+
+.item-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.item-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-admin {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-aluno {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge-code {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  font-size: 0.78rem;
+  color: #475569;
+  margin-bottom: 0.7rem;
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.5rem;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.6rem;
+}
+
+.item-actions .btn {
+  flex: 1;
+  min-height: 36px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.76rem;
+  border-radius: 8px;
+}
+
+/* Barra de Navegação Inferior (Coordenação) */
+.bottom-nav {
+  width: 100%;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-around;
+  padding: 0.4rem 0.5rem;
+  z-index: 30;
+  box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.nav-item {
+  flex: 1;
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.35rem 0;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.nav-item.active {
+  color: #003366;
+  background: #f0f9ff;
+  font-weight: 700;
+}
+
+.nav-label {
+  font-size: 0.7rem;
+}

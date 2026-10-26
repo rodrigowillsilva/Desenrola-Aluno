@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  mantisbt:
+    image: vimagick/mantisbt:latest
+    container_name: desenrola-mantisbt
+    ports:
+      - "8989:80"
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:5.7
+    container_name: desenrola-mantis-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=bugtracker
+      - MYSQL_USER=mantisbt
+      - MYSQL_PASSWORD=mantisbt
+    volumes:
+      - mantis_db_data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  mantis_db_data:
+

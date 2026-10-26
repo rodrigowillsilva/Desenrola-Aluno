@@ -1,0 +1,16 @@
+{
+  "name": "desenrola-aluno-app",
+  "version": "1.0.0",
+  "description": "Sistema Desenrola Aluno - Release 01 (CRUD 01 Usuários + CRUD 02 Cursos + Login RBAC)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  }
+}
+

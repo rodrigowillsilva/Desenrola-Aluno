@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Desenrola Aluno — UNIFEI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="mobile-shell">
+    <!-- Cabeçalho Superior do App -->
+    <header class="app-header">
+      <div class="brand" onclick="irParaTelaInicialSeLogado()">
+        <div class="logo-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10L12 5 2 10l10 5 10-5z"/>
+            <path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Desenrola Aluno</h1>
+          <p>Organização acadêmica UNIFEI</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-meu-perfil" class="btn-icon-header hidden" onclick="abrirMeuPerfilAluno()" title="Minha Conta">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </button>
+        <button id="btn-logout" class="btn-icon-logout hidden" onclick="fazerLogout()" title="Sair da conta">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Sair</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Informação de Sessão (visível na Coordenação) -->
+    <div id="user-session-bar" class="session-banner hidden">
+      <div class="session-avatar" id="user-avatar">U</div>
+      <div class="session-details">
+        <strong id="logged-user-info"></strong>
+        <span id="logged-user-sub"></span>
+      </div>
+    </div>
+
+    <!-- Área Principal Rolável -->
+    <main class="app-content">
+      <!-- Alerta de Feedback -->
+      <div id="feedback-alert" class="toast-alert hidden" role="alert"></div>
+
+      <!-- ================================================================ -->
+      <!-- 1. TELA DE LOGIN                                                 -->
+      <!-- ================================================================ -->
+      <section id="view-login" class="screen-section">
+        <div class="hero-box">
+          <h2>Seus horários, faltas e grade na mão</h2>
+          <p>Organize suas disciplinas do semestre, acompanhe suas faltas e veja o que já concluiu ou ainda falta no seu curso.</p>
+        </div>
+
+        <div class="mobile-card">
+          <h3>Entrar na conta</h3>
+          <form id="form-login" onsubmit="submeterLogin(event)">
+            <div class="field">
+              <label for="login-email">E-mail institucional</label>
+              <input type="email" id="login-email" placeholder="seu.nome@unifei.edu.br" required>
+            </div>
+            <div class="field">
+              <label for="login-senha">Senha</label>
+              <input type="password" id="login-senha" placeholder="Digite sua senha" required>
+            </div>
+            <button type="submit" id="btn-entrar" class="btn btn-primary btn-block">
+              Entrar
+            </button>
+          </form>
+
+          <div class="divider"><span>ou</span></div>
+
+          <button type="button" id="btn-ir-autocadastro" class="btn btn-outline btn-block" onclick="abrirAutoCadastro()">
+            Criar minha conta de aluno
+          </button>
+        </div>
+
+        <div class="quick-access-card">
+          <span class="quick-title">Acesso rápido de demonstração</span>
+          <div class="quick-Chips">
+            <button type="button" class="chip" onclick="preencherDemo('aluno@unifei.edu.br', 'Aluno123')">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span>Entrar como Aluno</span>
+            </button>
+            <button type="button" class="chip" onclick="preencherDemo('admin@unifei.edu.br', 'Admin123')">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span>Coordenação</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- 2. TELA INICIAL DO ALUNO (DISCIPLINAS DO SEMESTRE + GRADE)       -->
+      <!-- ================================================================ -->
+      <section id="view-aluno-home" class="screen-section hidden">
+        <div class="section-top">
+          <div>
+            <h2>Minhas Disciplinas</h2>
+            <p class="section-desc">Toque em uma disciplina para ver detalhes e faltas</p>
+          </div>
+          <button type="button" id="btn-abrir-add-semestre" class="btn btn-primary btn-pill" onclick="alternarBoxAdicionarDisciplinaAluno()">
+            + Adicionar
+          </button>
+        </div>
+
+        <!-- Card rápido para o aluno puxar uma matéria que falta para o semestre atual -->
+        <div id="box-add-disciplina-semestre" class="mobile-card hidden">
+          <h3>Adicionar ao Semestre</h3>
+          <form onsubmit="adicionarDisciplinaNoSemestrePeloSelect(event)">
+            <div class="field">
+              <label for="select-disc-disponivel">Escolha uma disciplina da sua grade</label>
+              <select id="select-disc-disponivel" required>
+                <option value="">Selecione a disciplina...</option>
+              </select>
+            </div>
+            <div class="sheet-actions">
+              <button type="submit" id="btn-confirmar-add-semestre" class="btn btn-primary btn-block">Colocar no Semestre</button>
+              <button type="button" class="btn btn-ghost btn-block" onclick="alternarBoxAdicionarDisciplinaAluno()">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Lista de Disciplinas do Aluno no Semestre -->
+        <div id="lista-disciplinas-aluno" class="disciplinas-list"></div>
+
+        <!-- Grade de Horários Semanal (Segunda a Sexta - Padrão UNIFEI 55min) -->
+        <div class="section-top timetable-section-header">
+          <div>
+            <h2>Grade de Horários</h2>
+            <p class="section-desc">Segunda a Sexta &bull; Aulas de 55 min</p>
+          </div>
+        </div>
+
+        <div class="timetable-card">
+          <div id="grade-horarios-geral" class="timetable-wrapper"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- 3. TELA ESPECÍFICA DA DISCIPLINA DO ALUNO                        -->
+      <!-- ================================================================ -->
+      <section id="view-disciplina-detalhe" class="screen-section hidden">
+        <button type="button" id="btn-voltar-home" class="btn-back" onclick="voltarParaHomeAluno()">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          <span>Voltar para tela inicial</span>
+        </button>
+
+        <!-- Cabeçalho e Informações Básicas da Disciplina -->
+        <div class="mobile-card detail-header-card">
+          <div class="detail-badge-row">
+            <span id="detalhe-codigo" class="disc-code-pill">SDES06</span>
+            <span id="detalhe-ch" class="disc-ch-pill">64h</span>
+          </div>
+          <h2 id="detalhe-nome" class="detail-title">Gerência de Projetos de Software</h2>
+
+          <div class="detail-info-list">
+            <div class="detail-info-item">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span id="detalhe-horarios-texto">Seg e Qua &bull; 07:00 às 08:50</span>
+            </div>
+            <div class="detail-info-item">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span id="detalhe-sala">Sala I.1.2.05 (IESTI)</span>
+            </div>
+            <div class="detail-info-item">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span id="detalhe-docente">Prof. Roberto Affonso</span>
+            </div>
+          </div>
+
+          <!-- Ações do Semestre para a Disciplina (Finalizar ou Retirar do Semestre) -->
+          <div class="detail-status-actions">
+            <button type="button" id="btn-finalizar-disciplina" class="btn btn-success btn-block" onclick="finalizarDisciplinaAtual()">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>Marcar como Finalizada</span>
+            </button>
+            <button type="button" id="btn-retirar-disciplina" class="btn btn-danger btn-block" onclick="retirarDisciplinaDoSemestreAtual()">
+              Retirar do Semestre
+            </button>
+          </div>
+        </div>
+
+        <!-- Controle de Faltas da Disciplina -->
+        <div class="mobile-card absence-card">
+          <div class="absence-top">
+            <div>
+              <h3>Controle de Faltas</h3>
+              <p id="detalhe-faltas-sub" class="section-desc">Limite máximo permitido: 16h (25%)</p>
+            </div>
+            <div class="absence-counter-badge" id="detalhe-faltas-badge">
+              2h / 16h
+            </div>
+          </div>
+
+          <div class="progress-bar-track">
+            <div id="detalhe-faltas-barra" class="progress-bar-fill" style="width: 12%;"></div>
+          </div>
+
+          <div class="absence-actions">
+            <button type="button" id="btn-remover-falta" class="btn btn-ghost" onclick="alterarFaltaDisciplinaAtual(-1)">
+              - 1 falta
+            </button>
+            <button type="button" id="btn-adicionar-falta" class="btn btn-primary" onclick="alterarFaltaDisciplinaAtual(1)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span>Adicionar falta</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mesma Grade de Segunda a Sexta preenchida apenas com esta disciplina -->
+        <div class="section-top timetable-section-header">
+          <div>
+            <h2>Horário na Grade</h2>
+            <p class="section-desc">Visualização exclusiva desta disciplina</p>
+          </div>
+        </div>
+
+        <div class="timetable-card">
+          <div id="grade-horarios-individual" class="timetable-wrapper"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- 4. NOVA TELA DO ALUNO: MINHA GRADE (FINALIZADAS, FAZENDO, FALTA) -->
+      <!-- ================================================================ -->
+      <section id="view-aluno-progresso" class="screen-section hidden">
+        <div class="section-top">
+          <div>
+            <h2>Progresso na Grade</h2>
+            <p class="section-desc">Acompanhe o que você já fez, está cursando e ainda falta</p>
+          </div>
+        </div>
+
+        <!-- Resumo em 3 contadores -->
+        <div class="progress-summary-grid">
+          <div class="summary-box summary-done">
+            <strong id="count-finalizadas">0</strong>
+            <span>Finalizadas</span>
+          </div>
+          <div class="summary-box summary-doing">
+            <strong id="count-fazendo">0</strong>
+            <span>Fazendo</span>
+          </div>
+          <div class="summary-box summary-todo">
+            <strong id="count-faltam">0</strong>
+            <span>Ainda faltam</span>
+          </div>
+        </div>
+
+        <!-- Filtros rápidos das 3 listas -->
+        <div class="segmented-control">
+          <button type="button" id="seg-todas" class="seg-btn active" onclick="filtrarSecaoProgresso('todas')">Todas</button>
+          <button type="button" id="seg-fazendo" class="seg-btn" onclick="filtrarSecaoProgresso('fazendo')">Fazendo</button>
+          <button type="button" id="seg-faltam" class="seg-btn" onclick="filtrarSecaoProgresso('faltam')">Faltam</button>
+          <button type="button" id="seg-finalizadas" class="seg-btn" onclick="filtrarSecaoProgresso('finalizadas')">Finalizadas</button>
+        </div>
+
+        <!-- Bloco 1: Fazendo neste semestre -->
+        <div id="bloco-progresso-fazendo" class="progresso-bloco">
+          <div class="group-divider">Fazendo neste semestre</div>
+          <div id="lista-progresso-fazendo" class="cards-list"></div>
+        </div>
+
+        <!-- Bloco 2: Ainda faltam na grade -->
+        <div id="bloco-progresso-faltam" class="progresso-bloco">
+          <div class="group-divider">Ainda faltam cursar</div>
+          <div id="lista-progresso-faltam" class="cards-list"></div>
+        </div>
+
+        <!-- Bloco 3: Disciplinas Finalizadas -->
+        <div id="bloco-progresso-finalizadas" class="progresso-bloco">
+          <div class="group-divider">Disciplinas Finalizadas</div>
+          <div id="lista-progresso-finalizadas" class="cards-list"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- 5. ÁREA ADMINISTRATIVA / PERFIL (DISCIPLINAS, CURSOS E USUÁRIOS) -->
+      <!-- ================================================================ -->
+      <section id="view-app" class="hidden">
+
+        <!-- Botão de retorno quando o Aluno abre "Minha Conta" -->
+        <button type="button" id="btn-voltar-aluno-perfil" class="btn-back hidden" onclick="voltarParaHomeAluno()">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          <span>Voltar para minhas disciplinas</span>
+        </button>
+
+        <!-- ABA: CATÁLOGO DE DISCIPLINAS DA GRADE CURRICULAR (CRUD COMPLETO) -->
+        <div id="aba-disciplinas" class="tab-pane hidden">
+          <div class="section-top">
+            <div>
+              <h2>Grade de Disciplinas</h2>
+              <p class="section-desc">Adicione, edite ou remova matérias da matriz curricular</p>
+            </div>
+            <button id="btn-nova-disciplina" class="btn btn-primary btn-pill" onclick="prepararNovaDisciplina()">
+              + Nova Disciplina
+            </button>
+          </div>
+
+          <!-- Formulário de Disciplina da Grade -->
+          <div id="card-form-disciplina" class="mobile-card form-sheet hidden">
+            <h3 id="titulo-form-disciplina">Nova Disciplina</h3>
+            <form id="form-disciplina" onsubmit="salvarDisciplinaCatalogo(event)">
+              <input type="hidden" id="disc-id">
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="disc-codigo">Código *</label>
+                  <input type="text" id="disc-codigo" placeholder="Ex: SDES06, COM220" required>
+                </div>
+                <div class="field">
+                  <label for="disc-curso">Curso *</label>
+                  <select id="disc-curso" required></select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="disc-nome">Nome da disciplina *</label>
+                <input type="text" id="disc-nome" placeholder="Ex: Banco de Dados I" required>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="disc-semestre">Semestre ideal *</label>
+                  <input type="number" id="disc-semestre" min="1" max="12" value="4" required>
+                </div>
+                <div class="field">
+                  <label for="disc-ch">Carga horária (h) *</label>
+                  <input type="number" id="disc-ch" min="16" max="128" value="64" required>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="disc-docente">Professor(a) *</label>
+                  <input type="text" id="disc-docente" placeholder="Ex: Prof. Melise" required>
+                </div>
+                <div class="field">
+                  <label for="disc-sala">Sala / Lab *</label>
+                  <input type="text" id="disc-sala" placeholder="Ex: I.1.2.05" required>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="disc-horarios">Horários (Padrão UNIFEI: DIA-SLOT) *</label>
+                <input type="text" id="disc-horarios" placeholder="Ex: SEG-M1,SEG-M2,QUA-M1,QUA-M2" required>
+              </div>
+
+              <div class="sheet-actions">
+                <button type="submit" id="btn-salvar-disciplina" class="btn btn-primary btn-block">Salvar Disciplina</button>
+                <button type="button" id="btn-cancelar-disciplina" class="btn btn-ghost btn-block" onclick="fecharFormDisciplina()">Cancelar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Filtros de Disciplinas -->
+          <div class="mobile-card filter-box">
+            <div class="field-row">
+              <div class="field">
+                <label for="filtro-disc-busca">Código ou nome</label>
+                <input type="text" id="filtro-disc-busca" placeholder="Ex: SDES06, Banco...">
+              </div>
+              <div class="field">
+                <label for="filtro-disc-curso">Curso</label>
+                <select id="filtro-disc-curso">
+                  <option value="TODOS">Todos</option>
+                </select>
+              </div>
+            </div>
+            <button type="button" id="btn-filtrar-disciplinas" class="btn btn-secondary btn-block" onclick="consultarDisciplinasCatalogo()">
+              Filtrar Disciplinas
+            </button>
+          </div>
+
+          <!-- Lista de Disciplinas da Grade -->
+          <div id="tbody-disciplinas" class="cards-list"></div>
+        </div>
+
+        <!-- ABA: GESTÃO DE CONTAS E PERFIL (CRUD DE USUÁRIOS) -->
+        <div id="aba-usuarios" class="tab-pane">
+          <div class="section-top">
+            <div>
+              <h2 id="titulo-secao-usuarios">Contas Cadastradas</h2>
+              <p class="section-desc" id="subtitulo-secao-usuarios">Gerencie os cadastros de alunos e coordenação</p>
+            </div>
+            <button id="btn-novo-usuario" class="btn btn-primary btn-pill" onclick="prepararNovoUsuario()">
+              + Novo Cadastro
+            </button>
+          </div>
+
+          <!-- Formulário de Cadastro / Edição de Conta -->
+          <div id="card-form-usuario" class="mobile-card form-sheet hidden">
+            <h3 id="titulo-form-usuario">Novo Cadastro</h3>
+            <form id="form-usuario" onsubmit="salvarUsuario(event)">
+              <input type="hidden" id="usuario-id">
+
+              <div class="field">
+                <label for="usuario-nome">Nome completo *</label>
+                <input type="text" id="usuario-nome" placeholder="Ex: Gabriel Barbosa" required>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="usuario-cpf">CPF *</label>
+                  <input type="text" id="usuario-cpf" placeholder="000.000.000-00" required>
+                </div>
+                <div class="field">
+                  <label for="usuario-perfil">Tipo de conta *</label>
+                  <select id="usuario-perfil" onchange="alternarCamposAluno()">
+                    <option value="Aluno (Discente)">Aluno (Discente)</option>
+                    <option value="Administrador">Administrador</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="usuario-email">E-mail institucional *</label>
+                <input type="email" id="usuario-email" placeholder="nome@unifei.edu.br" required>
+              </div>
+
+              <div class="field">
+                <label for="usuario-senha" id="label-usuario-senha">Senha de acesso *</label>
+                <input type="password" id="usuario-senha" placeholder="Mín. 8 caracteres (letras e números)">
+              </div>
+
+              <div class="campo-aluno">
+                <div class="field-row">
+                  <div class="field">
+                    <label for="usuario-matricula">Nº de Matrícula *</label>
+                    <input type="text" id="usuario-matricula" placeholder="2024001234" maxlength="10">
+                  </div>
+                  <div class="field">
+                    <label for="usuario-semestre">Semestre de ingresso *</label>
+                    <input type="text" id="usuario-semestre" placeholder="2024.1">
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="usuario-curso">Curso de graduação *</label>
+                  <select id="usuario-curso" onchange="carregarCurriculosDoCurso()">
+                    <option value="">Selecione seu curso...</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="usuario-curriculo">Matriz curricular *</label>
+                  <select id="usuario-curriculo">
+                    <option value="">Selecione a matriz...</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="sheet-actions">
+                <button type="submit" id="btn-salvar-usuario" class="btn btn-primary btn-block">Salvar</button>
+                <button type="button" id="btn-cancelar-usuario" class="btn btn-ghost btn-block" onclick="fecharFormUsuario()">Cancelar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Busca e Filtros de Usuários -->
+          <div id="card-filtros-usuario" class="mobile-card filter-box">
+            <div class="field">
+              <label for="filtro-usuario-nome">Buscar por nome</label>
+              <input type="text" id="filtro-usuario-nome" placeholder="Digite o nome...">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="filtro-usuario-perfil">Perfil</label>
+                <select id="filtro-usuario-perfil">
+                  <option value="TODOS">Todos</option>
+                  <option value="Aluno (Discente)">Alunos</option>
+                  <option value="Administrador">Coordenação</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filtro-usuario-curso">Curso</label>
+                <select id="filtro-usuario-curso">
+                  <option value="TODOS">Todos os cursos</option>
+                </select>
+              </div>
+            </div>
+            <button type="button" id="btn-filtrar-usuarios" class="btn btn-secondary btn-block" onclick="consultarUsuarios()">
+              Filtrar Lista
+            </button>
+          </div>
+
+          <!-- Lista de Cards Mobile de Usuários -->
+          <div id="tbody-usuarios" class="cards-list"></div>
+        </div>
+
+        <!-- ABA: CATÁLOGO DE CURSOS DE GRADUAÇÃO (CRUD DE CURSOS) -->
+        <div id="aba-cursos" class="tab-pane hidden">
+          <div class="section-top">
+            <div>
+              <h2>Cursos de Graduação</h2>
+              <p class="section-desc">Gerencie cursos, turnos e prazos de integralização</p>
+            </div>
+            <button id="btn-novo-curso" class="btn btn-primary btn-pill" onclick="prepararNovoCurso()">
+              + Novo Curso
+            </button>
+          </div>
+
+          <!-- Formulário de Curso -->
+          <div id="card-form-curso" class="mobile-card form-sheet hidden">
+            <h3 id="titulo-form-curso">Cadastrar Curso</h3>
+            <form id="form-curso" onsubmit="salvarCurso(event)">
+              <input type="hidden" id="curso-id">
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="curso-codigo">Sigla / Código *</label>
+                  <input type="text" id="curso-codigo" placeholder="Ex: CCO, SIN" required>
+                </div>
+                <div class="field">
+                  <label for="curso-instituto">Instituto *</label>
+                  <select id="curso-instituto" required>
+                    <option value="IESTI">IESTI</option>
+                    <option value="IMC">IMC</option>
+                    <option value="IEPG">IEPG</option>
+                    <option value="IEM">IEM</option>
+                    <option value="IEE">IEE</option>
+                    <option value="IRN">IRN</option>
+                    <option value="IFE">IFE</option>
+                    <option value="ICET">ICET</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="curso-nome">Nome do curso *</label>
+                <input type="text" id="curso-nome" placeholder="Ex: Ciência da Computação" required>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="curso-grau">Grau *</label>
+                  <select id="curso-grau" required>
+                    <option value="Bacharelado">Bacharelado</option>
+                    <option value="Licenciatura">Licenciatura</option>
+                    <option value="Tecnólogo">Tecnólogo</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="curso-turno">Turno *</label>
+                  <select id="curso-turno" required>
+                    <option value="Integral">Integral</option>
+                    <option value="Noturno">Noturno</option>
+                    <option value="Matutino">Matutino</option>
+                    <option value="Vespertino">Vespertino</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="curso-duracao-padrao">Duração ideal (sem.) *</label>
+                  <input type="number" id="curso-duracao-padrao" min="4" max="12" value="8" required>
+                </div>
+                <div class="field">
+                  <label for="curso-duracao-maxima">Prazo máximo (sem.) *</label>
+                  <input type="number" id="curso-duracao-maxima" min="6" max="18" value="12" required>
+                </div>
+              </div>
+
+              <div class="sheet-actions">
+                <button type="submit" id="btn-salvar-curso" class="btn btn-primary btn-block">Salvar Curso</button>
+                <button type="button" id="btn-cancelar-curso" class="btn btn-ghost btn-block" onclick="fecharFormCurso()">Cancelar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Filtros de Cursos -->
+          <div class="mobile-card filter-box">
+            <div class="field">
+              <label for="filtro-curso-busca">Buscar por nome ou sigla</label>
+              <input type="text" id="filtro-curso-busca" placeholder="Ex: Computação, SIN, CCO...">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="filtro-curso-instituto">Instituto</label>
+                <select id="filtro-curso-instituto">
+                  <option value="TODOS">Todos</option>
+                  <option value="IESTI">IESTI</option>
+                  <option value="IMC">IMC</option>
+                  <option value="IEPG">IEPG</option>
+                  <option value="IEM">IEM</option>
+                  <option value="IEE">IEE</option>
+                  <option value="IRN">IRN</option>
+                  <option value="IFE">IFE</option>
+                  <option value="ICET">ICET</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filtro-curso-turno">Turno</label>
+                <select id="filtro-curso-turno">
+                  <option value="TODOS">Todos</option>
+                  <option value="Integral">Integral</option>
+                  <option value="Noturno">Noturno</option>
+                  <option value="Matutino">Matutino</option>
+                  <option value="Vespertino">Vespertino</option>
+                </select>
+              </div>
+            </div>
+            <button type="button" id="btn-filtrar-cursos" class="btn btn-secondary btn-block" onclick="consultarCursos()">
+              Buscar Cursos
+            </button>
+          </div>
+
+          <!-- Lista de Cards Mobile de Cursos -->
+          <span id="th-acoes-curso" class="hidden"></span>
+          <div id="tbody-cursos" class="cards-list"></div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Barra de Navegação Inferior do ALUNO (Semestre Atual | Minha Grade) -->
+    <nav id="student-bottom-nav" class="bottom-nav hidden">
+      <button id="tab-aluno-semestre" class="nav-item active" onclick="voltarParaHomeAluno()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span class="nav-label">Meu Semestre</span>
+      </button>
+      <button id="tab-aluno-grade" class="nav-item" onclick="abrirTelaProgressoAluno()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        <span class="nav-label">Minha Grade</span>
+      </button>
+    </nav>
+
+    <!-- Barra de Navegação Inferior da COORDENAÇÃO (Disciplinas | Cursos | Usuários) -->
+    <nav id="bottom-nav" class="bottom-nav hidden">
+      <button id="tab-disciplinas" class="nav-item" onclick="mostrarAba('disciplinas')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6"/>
+          <line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/>
+          <line x1="3" y1="6" x2="3.01" y2="6"/>
+          <line x1="3" y1="12" x2="3.01" y2="12"/>
+          <line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+        <span class="nav-label">Disciplinas</span>
+      </button>
+      <button id="tab-cursos" class="nav-item" onclick="mostrarAba('cursos')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <span class="nav-label">Cursos</span>
+      </button>
+      <button id="tab-usuarios" class="nav-item active" onclick="mostrarAba('usuarios')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="nav-label" id="nav-label-usuarios">Usuários</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>MantisBT — Desenrola Aluno (Release 01)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Open Sans', 'Segoe UI', Tahoma, sans-serif; }
+    body { background-color: #f2f2f2; color: #393939; font-size: 13px; }
+    .navbar { background-color: #438eb9; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .navbar-brand { font-size: 18px; font-weight: bold; letter-spacing: 0.5px; }
+    .navbar-user { font-size: 12px; background: #2c6aa0; padding: 5px 12px; border-radius: 3px; }
+    .subbar { background-color: #f8f8f8; border-bottom: 1px solid #e5e5e5; padding: 8px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .container { padding: 20px; max-width: 1280px; margin: 0 auto; }
+    .widget-box { background: #fff; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .widget-header { background: #f7f7f7; border-bottom: 1px solid #dce8f1; padding: 10px 15px; font-weight: bold; color: #438eb9; font-size: 14px; display: flex; justify-content: space-between; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #e5e5e5; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f2f2f2; color: #555; font-weight: 700; font-size: 12px; }
+    .status-closed { background-color: #c9ccc4; padding: 3px 7px; border-radius: 2px; font-weight: bold; color: #222; display: inline-block; }
+    .status-resolved { background-color: #d2f5b0; padding: 3px 7px; border-radius: 2px; font-weight: bold; color: #1d5905; display: inline-block; }
+    .sev-critical { color: #d15b47; font-weight: bold; }
+    .sev-major { color: #e8b110; font-weight: bold; }
+    .issue-id { color: #438eb9; font-weight: bold; text-decoration: none; }
+    .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+    .stat-card { background: #fff; border: 1px solid #dce8f1; border-left: 4px solid #438eb9; padding: 12px 15px; }
+    .stat-card h4 { font-size: 12px; color: #666; margin-bottom: 4px; }
+    .stat-card .num { font-size: 22px; font-weight: bold; color: #2c6aa0; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div class="navbar-brand">MantisBT — Bug Tracker | Projeto: Desenrola Aluno (UNIFEI)</div>
+    <div class="navbar-user">Usuário: <strong>Gabriel Barbosa (Líder de QA / Gerente de Configuração)</strong> | Projeto: <strong>PRJ-DESENROLA-2026 (Release 01)</strong></div>
+  </div>
+  <div class="subbar">
+    <div>Visão de Problemas (Viewing Issues) — Filtro Ativo: <strong>Versão Alvo = BASELINE_R01 (1 - 5 / 5)</strong></div>
+    <div>Status da Suite Selenium Mobile: <strong>9 / 9 Casos de Teste Aprovados</strong></div>
+  </div>
+
+  <div class="container">
+    <div class="summary-cards">
+      <div class="stat-card">
+        <h4>Total de Issues (Release 01)</h4>
+        <div class="num">5</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #87b87f;">
+        <h4>Fechados / Resolvidos</h4>
+        <div class="num" style="color: #468847;">5 (100%)</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #d15b47;">
+        <h4>Abertos / Pendentes</h4>
+        <div class="num" style="color: #d15b47;">0</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #f89406;">
+        <h4>Cobertura de Reteste (Selenium)</h4>
+        <div class="num" style="color: #c67605;">9 / 9 CTs (100%)</div>
+      </div>
+    </div>
+
+    <div class="widget-box">
+      <div class="widget-header">
+        <span>Problemas Registrados na Release 01 (MantisBT Issues #0000101 a #0000105)</span>
+        <span>Baseline Associada: BASELINE_R01</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Categoria (Módulo)</th>
+            <th>Severidade</th>
+            <th>Prioridade</th>
+            <th>Status / Resolução</th>
+            <th>Atribuído a</th>
+            <th>Atualizado</th>
+            <th>Resumo do Problema e Evidência de Correção / Reteste</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="issue-id">0000101</span></td>
+            <td>Perfis e Contas de Aluno<br><small>RFS01 / CT01</small></td>
+            <td><span class="sev-major">Maior (Major)</span></td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>26/12/2026</td>
+            <td>
+              <strong>Cadastro de conta de aluno aceitava CPF com 11 dígitos repetidos (ex: 111.111.111-11)</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Adicionada trava regex <code>/^(\d)\1{10}$/</code> antes do cálculo de dígitos verificadores em <code>validarCPF()</code>. Validado pelo <code>CT01</code> no Selenium.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000102</span></td>
+            <td>Perfis e Contas de Aluno<br><small>RFS03 / CT03</small></td>
+            <td>Médio (Minor)</td>
+            <td>Normal</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Leonardo Marinho</td>
+            <td>28/12/2026</td>
+            <td>
+              <strong>Campo de Número de Matrícula ficava habilitado ao abrir a edição de perfil do aluno no mobile</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Bloqueado o input <code>#usuario-matricula</code> com <code>disabled = true</code> na edição mobile e adicionada trava no backend <code>PUT /api/usuarios/:id</code>. Validado pelo <code>CT03</code>.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000103</span></td>
+            <td>Perfis e Contas de Aluno<br><small>RFS04 / CT04</small></td>
+            <td><span class="sev-critical">Crítico (Crash)</span></td>
+            <td>Urgente</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>29/12/2026</td>
+            <td>
+              <strong>Sistema permitia excluir o único administrador ativo da coordenação</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Implementada verificação de contagem de administradores ativos antes do DELETE. Validado pelo <code>CT04</code> no Selenium.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000104</span></td>
+            <td>Catálogo de Cursos UNIFEI<br><small>RFS05 / CT05</small></td>
+            <td>Médio (Minor)</td>
+            <td>Normal</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Gabriel Maia</td>
+            <td>30/12/2026</td>
+            <td>
+              <strong>Formulário de curso aceitava Prazo Máximo de integralização menor que a Duração Ideal</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Adicionada regra <code>dMaxima &gt;= dPadrao</code> no cadastro e edição de cursos. Validado pelo <code>CT05</code>.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000105</span></td>
+            <td>Interface Mobile / Cursos<br><small>RNF01 / RFS08 / CT08</small></td>
+            <td><span class="sev-major">Maior (Major)</span></td>
+            <td>Alta</td>
+            <td><span class="status-resolved">resolvido (corrigido)</span></td>
+            <td>Leonardo Marinho</td>
+            <td>31/12/2026</td>
+            <td>
+              <strong>Barra inferior de navegação mobile (Bottom Nav) sobrepunha o botão de ação do último card da lista em telas pequenas</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Ajustado o posicionamento <code>sticky</code> da <code>.bottom-nav</code> e o padding inferior do container mobile. Validado pelo <code>CT08</code> no Selenium.</small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
