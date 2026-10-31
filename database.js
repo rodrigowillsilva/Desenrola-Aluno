@@ -127,9 +127,31 @@ async function initDatabase() {
     )
   `);
 
+  // Release 02: Tabela relacional de pre-requisitos entre disciplinas (N:N)
+  await run(`
+    CREATE TABLE IF NOT EXISTS TB_PRE_REQUISITO (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      disciplina_id INTEGER NOT NULL,
+      prerequisito_id INTEGER NOT NULL,
+      UNIQUE (disciplina_id, prerequisito_id),
+      FOREIGN KEY (disciplina_id) REFERENCES TB_DISCIPLINA(id) ON DELETE CASCADE,
+      FOREIGN KEY (prerequisito_id) REFERENCES TB_DISCIPLINA(id) ON DELETE CASCADE
+    )
+  `);
+
+  await adicionarColunaSeNaoExistir('TB_DISCIPLINA', 'tipo', "TEXT NOT NULL DEFAULT 'Obrigatória'");
+  await adicionarColunaSeNaoExistir('TB_CURRICULO', 'ch_total', 'INTEGER NOT NULL DEFAULT 3200');
+
   await seedInitialData();
 }
 
+
+async function adicionarColunaSeNaoExistir(tabela, coluna, definicao) {
+  const colunas = await all(`PRAGMA table_info(${tabela})`);
+  if (!colunas.some((c) => c.name === coluna)) {
+    await run(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${definicao}`);
+  }
+}
 async function seedInitialData() {
   const countCursos = await get('SELECT COUNT(*) as total FROM TB_CURSO');
   let sinId = null;
@@ -155,19 +177,10 @@ async function seedInitialData() {
     sinId = sin.lastID;
     ccoId = cco.lastID;
 
-    await run(
-      `INSERT INTO TB_CURRICULO (codigo, curso_id, ano_semestre, status) VALUES (?, ?, ?, ?)`,
-      ['SIN-2023', sin.lastID, '2023.1', 'Ativo (Vigente)']
-    );
-    await run(
-      `INSERT INTO TB_CURRICULO (codigo, curso_id, ano_semestre, status) VALUES (?, ?, ?, ?)`,
-      ['CCO-2023', cco.lastID, '2023.1', 'Ativo (Vigente)']
-    );
-    await run(
-      `INSERT INTO TB_CURRICULO (codigo, curso_id, ano_semestre, status) VALUES (?, ?, ?, ?)`,
-      ['ECO-2023', eco.lastID, '2023.1', 'Ativo (Vigente)']
-    );
-  } else {
+    const sqlCurr = `INSERT INTO TB_CURRICULO (codigo, curso_id, ano_semestre, status, ch_obrigatoria, ch_optativa, ch_complementar, ch_total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    await run(sqlCurr, ['SIN-2023', sin.lastID, '2023.1', 'Ativo (Vigente)', 2720, 256, 224, 3200]);
+    await run(sqlCurr, ['CCO-2023', cco.lastID, '2023.1', 'Ativo (Vigente)', 2880, 192, 200, 3272]);
+    await run(sqlCurr, ['ECO-2023', eco.lastID, '2023.1', 'Ativo (Vigente)', 3360, 192, 240, 3792]);
     const cSin = await get('SELECT id FROM TB_CURSO WHERE codigo = ?', ['SIN']);
     const cCco = await get('SELECT id FROM TB_CURSO WHERE codigo = ?', ['CCO']);
     sinId = cSin ? cSin.id : 1;
@@ -313,6 +326,43 @@ async function seedInitialData() {
         horarios: 'QUA-T3,QUA-T4,QUA-T5',
         cor: '#16a34a'
       },
+      // Disciplinas Optativas do curriculo SIN (Release 02)
+      {
+        codigo: 'SIN430',
+        nome: 'Desenvolvimento para Dispositivos Móveis',
+        curso_id: sinId,
+        semestre_ideal: 6,
+        ch_total: 64,
+        docente: 'Prof. Rafael Frinhani',
+        sala: 'Lab I.1.1.04 (IESTI)',
+        horarios: 'QUI-T3,QUI-T4,SEX-M4,SEX-M5',
+        cor: '#0f766e',
+        tipo: 'Optativa'
+      },
+      {
+        codigo: 'SIN420',
+        nome: 'Computação em Nuvem',
+        curso_id: sinId,
+        semestre_ideal: 7,
+        ch_total: 64,
+        docente: 'Prof. Bruno Tardiole',
+        sala: 'Lab I.1.1.05 (IESTI)',
+        horarios: 'TER-T1,TER-T2,QUI-M4,QUI-M5',
+        cor: '#be123c',
+        tipo: 'Optativa'
+      },
+      {
+        codigo: 'SIN440',
+        nome: 'Visão Computacional',
+        curso_id: sinId,
+        semestre_ideal: 8,
+        ch_total: 32,
+        docente: 'Prof. Carlos Eduardo',
+        sala: 'I.1.2.10 (IESTI)',
+        horarios: 'SEG-T3,SEG-T4',
+        cor: '#a16207',
+        tipo: 'Optativa'
+      },
       // Disciplina de CCO para demonstrar vínculo por curso
       {
         codigo: 'COM310',
@@ -329,12 +379,36 @@ async function seedInitialData() {
 
     for (const d of catalogoDisciplinas) {
       await run(
-        `INSERT INTO TB_DISCIPLINA (codigo, nome, curso_id, semestre_ideal, ch_total, docente, sala, horarios, cor)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [d.codigo, d.nome, d.curso_id, d.semestre_ideal, d.ch_total, d.docente, d.sala, d.horarios, d.cor]
+        `INSERT INTO TB_DISCIPLINA (codigo, nome, curso_id, semestre_ideal, ch_total, docente, sala, horarios, cor, tipo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [d.codigo, d.nome, d.curso_id, d.semestre_ideal, d.ch_total, d.docente, d.sala, d.horarios, d.cor, d.tipo || 'Obrigatória']
       );
     }
   }
+
+    // Pré-requisitos curriculares do curso SIN (Release 02)
+    const preRequisitos = [
+      ['COM111', 'COM110'],
+      ['COM112', 'COM111'],
+      ['MAT013', 'MAT001'],
+      ['COM210', 'COM111'],
+      ['COM220', 'COM112'],
+      ['COM240', 'COM111'],
+      ['SIN310', 'COM240'],
+      ['SDES06', 'COM210'],
+      ['SIN412', 'COM112'],
+      ['SIN412', 'MAT013'],
+      ['SIN430', 'COM112'],
+      ['SIN420', 'SIN310'],
+      ['SIN440', 'SIN412']
+    ];
+    for (const [cod, codPre] of preRequisitos) {
+      const disc = await get('SELECT id FROM TB_DISCIPLINA WHERE codigo = ?', [cod]);
+      const pre = await get('SELECT id FROM TB_DISCIPLINA WHERE codigo = ?', [codPre]);
+      if (disc && pre) {
+        await run('INSERT OR IGNORE INTO TB_PRE_REQUISITO (disciplina_id, prerequisito_id) VALUES (?, ?)', [disc.id, pre.id]);
+      }
+    }
 
   const countUsers = await get('SELECT COUNT(*) as total FROM TB_USUARIO');
   if (countUsers.total === 0) {

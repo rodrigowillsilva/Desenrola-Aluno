@@ -94,6 +94,11 @@ function mostrarAba(aba) {
   tabCursos.classList.remove('active');
   tabUsuarios.classList.remove('active');
 
+  const abaCurriculo = document.getElementById('aba-curriculo');
+  const tabCurriculo = document.getElementById('tab-curriculo');
+  if (abaCurriculo) abaCurriculo.classList.add('hidden');
+  if (tabCurriculo) tabCurriculo.classList.remove('active');
+
   if (aba === 'disciplinas') {
     abaDisciplinas.classList.remove('hidden');
     tabDisciplinas.classList.add('active');
@@ -102,6 +107,10 @@ function mostrarAba(aba) {
     abaCursos.classList.remove('hidden');
     tabCursos.classList.add('active');
     consultarCursos();
+  } else if (aba === 'curriculo') {
+    if (abaCurriculo) abaCurriculo.classList.remove('hidden');
+    if (tabCurriculo) tabCurriculo.classList.add('active');
+    consultarCurriculos();
   } else {
     abaUsuarios.classList.remove('hidden');
     tabUsuarios.classList.add('active');
@@ -200,6 +209,7 @@ function fazerLogout() {
   fecharFormUsuario();
   fecharFormCurso();
   fecharFormDisciplina();
+  fecharFormCurriculo();
   limparMensagem();
 }
 
@@ -524,25 +534,57 @@ async function abrirTelaProgressoAluno() {
 }
 
 function renderizarTelaProgressoAluno() {
-  const { finalizadas, fazendo, faltam } = progressoAlunoCache;
+  const { finalizadas, fazendo, faltam, ch, curriculo } = progressoAlunoCache;
 
-  document.getElementById('count-finalizadas').textContent = finalizadas.length;
-  document.getElementById('count-fazendo').textContent = fazendo.length;
-  document.getElementById('count-faltam').textContent = faltam.length;
+  document.getElementById('count-finalizadas').textContent = finalizadas ? finalizadas.length : 0;
+  document.getElementById('count-fazendo').textContent = fazendo ? fazendo.length : 0;
+  document.getElementById('count-faltam').textContent = faltam ? faltam.length : 0;
 
-  // 1. Lista de Fazendo no Semestre
+  if (ch && curriculo) {
+    document.getElementById('ch-curriculo-codigo').textContent = `${curriculo.codigo} (${curriculo.ano_semestre})`;
+    document.getElementById('ch-obrigatoria-texto').textContent = `${ch.obrigatoria_cumprida}h / ${ch.obrigatoria_exigida}h`;
+    const pctObrig = ch.obrigatoria_exigida > 0 ? Math.min(100, Math.round((ch.obrigatoria_cumprida / ch.obrigatoria_exigida) * 100)) : 0;
+    document.getElementById('ch-obrigatoria-barra').style.width = `${pctObrig}%`;
+
+    document.getElementById('ch-optativa-texto').textContent = `${ch.optativa_cumprida}h / ${ch.optativa_exigida}h`;
+    const pctOpt = ch.optativa_exigida > 0 ? Math.min(100, Math.round((ch.optativa_cumprida / ch.optativa_exigida) * 100)) : 0;
+    document.getElementById('ch-optativa-barra').style.width = `${pctOpt}%`;
+
+    document.getElementById('ch-total-texto').textContent = `${ch.total_cumprido}h / ${ch.total_exigido}h`;
+    const pctTotal = ch.total_exigido > 0 ? Math.min(100, Math.round((ch.total_cumprido / ch.total_exigido) * 100)) : 0;
+    document.getElementById('ch-total-barra').style.width = `${pctTotal}%`;
+
+    document.getElementById('ch-complementar-texto').textContent = `* Atividades complementares exigidas para colação: ${ch.complementar_exigida}h.`;
+  }
+
+  const renderPrereqsInfo = (prereqs) => {
+    if (!prereqs || prereqs.length === 0) return '';
+    const pills = prereqs
+      .map(
+        (p) =>
+          `<span class="prereq-pill ${p.cumprido ? 'prereq-ok' : 'prereq-pendente'}">${p.codigo} ${p.cumprido ? '✓' : 'pendente'}</span>`
+      )
+      .join(' ');
+    return `<div class="prereq-info"><span><strong>Pré-req:</strong></span> ${pills}</div>`;
+  };
+
   const boxFazendo = document.getElementById('lista-progresso-fazendo');
   boxFazendo.innerHTML = '';
-  fazendo.forEach((t) => {
+  (fazendo || []).forEach((t) => {
+    const badgeTipo = t.tipo === 'Optativa' ? '<span class="badge-optativa">Optativa</span>' : '<span class="badge-obrigatoria">Obrigatória</span>';
     boxFazendo.innerHTML += `
       <article class="item-card" data-progresso-codigo="${t.codigo}">
         <div class="item-card-header">
           <span class="item-title">${t.codigo} — ${t.nome}</span>
-          <span class="badge badge-doing">Fazendo</span>
+          <div style="display:flex; gap:0.3rem; align-items:center;">
+            ${badgeTipo}
+            <span class="badge badge-doing">Fazendo</span>
+          </div>
         </div>
         <div class="item-meta">
           <span><strong>Docente:</strong> ${t.docente} &bull; <strong>CH:</strong> ${t.ch_total}h</span>
           <span><strong>Faltas acumuladas:</strong> ${t.faltas_horas}h</span>
+          ${renderPrereqsInfo(t.prerequisitos)}
         </div>
         <div class="item-actions">
           <button class="btn btn-secondary" onclick="abrirDetalheDisciplina(${t.id})">Ver Horário e Faltas</button>
@@ -552,19 +594,31 @@ function renderizarTelaProgressoAluno() {
     `;
   });
 
-  // 2. Lista de Ainda Faltam
   const boxFaltam = document.getElementById('lista-progresso-faltam');
   boxFaltam.innerHTML = '';
-  faltam.forEach((d) => {
+  let periodoAtualFaltam = null;
+  (faltam || []).forEach((d) => {
+    const sem = d.semestre_ideal || 0;
+    if (sem !== periodoAtualFaltam) {
+      periodoAtualFaltam = sem;
+      const labelPeriodo = sem > 0 ? `${sem}º período sugerido` : 'Disciplinas Eletivas/Optativas';
+      boxFaltam.innerHTML += `<div class="periodo-header">${labelPeriodo}</div>`;
+    }
+    const badgeTipo = d.tipo === 'Optativa' ? '<span class="badge-optativa">Optativa</span>' : '<span class="badge-obrigatoria">Obrigatória</span>';
+
     boxFaltam.innerHTML += `
       <article class="item-card" data-progresso-codigo="${d.codigo}">
         <div class="item-card-header">
           <span class="item-title">${d.codigo} — ${d.nome}</span>
-          <span class="badge badge-todo">Falta (${d.semestre_ideal}º sem.)</span>
+          <div style="display:flex; gap:0.3rem; align-items:center;">
+            ${badgeTipo}
+            <span class="badge badge-todo">Falta (${d.semestre_ideal}º sem.)</span>
+          </div>
         </div>
         <div class="item-meta">
           <span><strong>Docente:</strong> ${d.docente} &bull; <strong>CH:</strong> ${d.ch_total}h</span>
           <span><strong>Horário ofertado:</strong> ${formatarResumoHorarios(d.horarios)}</span>
+          ${renderPrereqsInfo(d.prerequisitos)}
         </div>
         <div class="item-actions">
           <button class="btn btn-primary btn-puxar-semestre" onclick="adicionarDisciplinaAoSemestre(${d.id}, true)">
@@ -575,18 +629,30 @@ function renderizarTelaProgressoAluno() {
     `;
   });
 
-  // 3. Lista de Finalizadas
   const boxFinalizadas = document.getElementById('lista-progresso-finalizadas');
   boxFinalizadas.innerHTML = '';
-  finalizadas.forEach((f) => {
+  let periodoAtualFinalizadas = null;
+  (finalizadas || []).forEach((f) => {
+    const sem = f.semestre_ideal || 0;
+    if (sem !== periodoAtualFinalizadas) {
+      periodoAtualFinalizadas = sem;
+      const labelPeriodo = sem > 0 ? `${sem}º período` : 'Disciplinas';
+      boxFinalizadas.innerHTML += `<div class="periodo-header">${labelPeriodo}</div>`;
+    }
+    const badgeTipo = f.tipo === 'Optativa' ? '<span class="badge-optativa">Optativa</span>' : '<span class="badge-obrigatoria">Obrigatória</span>';
+
     boxFinalizadas.innerHTML += `
       <article class="item-card" data-progresso-codigo="${f.codigo}">
         <div class="item-card-header">
           <span class="item-title">${f.codigo} — ${f.nome}</span>
-          <span class="badge badge-done">Finalizada</span>
+          <div style="display:flex; gap:0.3rem; align-items:center;">
+            ${badgeTipo}
+            <span class="badge badge-done">Finalizada</span>
+          </div>
         </div>
         <div class="item-meta">
           <span><strong>Carga horária cumprida:</strong> ${f.ch_total}h</span>
+          ${renderPrereqsInfo(f.prerequisitos)}
         </div>
       </article>
     `;
@@ -675,11 +741,18 @@ async function carregarSelectsDeCursos() {
   if (selDiscCurso) selDiscCurso.innerHTML = '';
   if (selFiltroDiscCurso) selFiltroDiscCurso.innerHTML = '<option value="TODOS">Todos</option>';
 
+  const selCurrCurso = document.getElementById('curriculo-curso');
+  const selFiltroCurrCurso = document.getElementById('filtro-curriculo-curso');
+  if (selCurrCurso) selCurrCurso.innerHTML = '';
+  if (selFiltroCurrCurso) selFiltroCurrCurso.innerHTML = '<option value="TODOS">Todos</option>';
+
   listaCursosCache.forEach((c) => {
     selForm.innerHTML += `<option value="${c.id}">${c.codigo} - ${c.nome} (${c.turno})</option>`;
     selFiltro.innerHTML += `<option value="${c.id}">${c.codigo} - ${c.nome}</option>`;
     if (selDiscCurso) selDiscCurso.innerHTML += `<option value="${c.id}">${c.codigo} - ${c.nome}</option>`;
     if (selFiltroDiscCurso) selFiltroDiscCurso.innerHTML += `<option value="${c.id}">${c.codigo}</option>`;
+    if (selCurrCurso) selCurrCurso.innerHTML += `<option value="${c.id}">${c.codigo} - ${c.nome}</option>`;
+    if (selFiltroCurrCurso) selFiltroCurrCurso.innerHTML += `<option value="${c.id}">${c.codigo} - ${c.nome}</option>`;
   });
 }
 
@@ -717,12 +790,35 @@ function alternarCamposAluno() {
 // ============================================================================
 // CRUD DE DISCIPLINAS DA GRADE CURRICULAR (COORDENAÇÃO)
 // ============================================================================
+function renderizarOpcoesPrerequisitos(disciplinaAtualId, idsPrereqSelecionados = []) {
+  const container = document.getElementById('disc-prereqs');
+  if (!container) return;
+  container.innerHTML = '';
+  const setSelecionados = new Set(idsPrereqSelecionados.map(Number));
+
+  listaDisciplinasCatalogoCache
+    .filter((d) => !disciplinaAtualId || d.id !== Number(disciplinaAtualId))
+    .sort((a, b) => a.semestre_ideal - b.semestre_ideal || a.codigo.localeCompare(b.codigo))
+    .forEach((d) => {
+      const checked = setSelecionados.has(d.id) ? 'checked' : '';
+      container.innerHTML += `
+        <label>
+          <input type="checkbox" name="disc-prereq-item" value="${d.id}" ${checked}>
+          <span>${d.codigo} (${d.semestre_ideal}º sem.)</span>
+        </label>
+      `;
+    });
+}
+
 function prepararNovaDisciplina() {
   limparMensagem();
   document.getElementById('form-disciplina').reset();
   document.getElementById('disc-id').value = '';
   document.getElementById('titulo-form-disciplina').textContent = 'Nova Disciplina na Grade';
   document.getElementById('disc-codigo').disabled = false;
+  document.getElementById('disc-tipo').value = 'Obrigatória';
+  document.getElementById('disc-ch').value = '64';
+  renderizarOpcoesPrerequisitos(null, []);
   const card = document.getElementById('card-form-disciplina');
   card.classList.remove('hidden');
   card.scrollIntoView({ behavior: 'instant', block: 'start' });
@@ -736,8 +832,10 @@ function fecharFormDisciplina() {
 async function consultarDisciplinasCatalogo() {
   const busca = document.getElementById('filtro-disc-busca').value;
   const curso_id = document.getElementById('filtro-disc-curso').value;
+  const periodo = document.getElementById('filtro-disc-periodo') ? document.getElementById('filtro-disc-periodo').value : 'TODOS';
+  const tipo = document.getElementById('filtro-disc-tipo') ? document.getElementById('filtro-disc-tipo').value : 'TODOS';
 
-  const params = new URLSearchParams({ busca, curso_id });
+  const params = new URLSearchParams({ busca, curso_id, periodo, tipo });
   const resp = await fetch(`/api/disciplinas?${params.toString()}`);
   const disciplinas = await resp.json();
   listaDisciplinasCatalogoCache = disciplinas;
@@ -752,15 +850,23 @@ async function consultarDisciplinasCatalogo() {
       container.innerHTML += `<div class="group-divider">${semAtual}º Semestre Ideal</div>`;
     }
 
+    const badgeTipo = d.tipo === 'Optativa' ? '<span class="badge-optativa">Optativa</span>' : '<span class="badge-obrigatoria">Obrigatória</span>';
+    const prereqsTexto = d.prerequisitos_codigos && d.prerequisitos_codigos.length > 0
+      ? ` &bull; <strong>Pré-req:</strong> ${d.prerequisitos_codigos.join(', ')}`
+      : '';
+
     container.innerHTML += `
       <article class="item-card" data-catalogo-codigo="${d.codigo}">
         <div class="item-card-header">
           <span class="item-title">${d.nome}</span>
-          <span class="badge badge-code">${d.codigo} (${d.curso_codigo || 'UNIFEI'})</span>
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            ${badgeTipo}
+            <span class="badge badge-code">${d.codigo} (${d.curso_codigo || 'UNIFEI'})</span>
+          </div>
         </div>
         <div class="item-meta">
           <span><strong>Docente:</strong> ${d.docente} &bull; <strong>Sala:</strong> ${d.sala}</span>
-          <span><strong>Carga Horária:</strong> ${d.ch_total}h &bull; <strong>Horários:</strong> ${d.horarios}</span>
+          <span><strong>Carga Horária:</strong> ${d.ch_total}h &bull; <strong>Horários:</strong> ${d.horarios}${prereqsTexto}</span>
         </div>
         <div class="item-actions">
           <button type="button" class="btn btn-secondary btn-editar-disciplina" onclick="prepararEdicaoDisciplina(${d.id})">
@@ -791,9 +897,14 @@ function prepararEdicaoDisciplina(idOuObj) {
   document.getElementById('disc-nome').value = d.nome;
   document.getElementById('disc-semestre').value = d.semestre_ideal;
   document.getElementById('disc-ch').value = d.ch_total;
+  if (document.getElementById('disc-tipo')) {
+    document.getElementById('disc-tipo').value = d.tipo || 'Obrigatória';
+  }
   document.getElementById('disc-docente').value = d.docente;
   document.getElementById('disc-sala').value = d.sala;
   document.getElementById('disc-horarios').value = d.horarios;
+
+  renderizarOpcoesPrerequisitos(d.id, d.prerequisitos_ids || []);
 
   const card = document.getElementById('card-form-disciplina');
   card.classList.remove('hidden');
@@ -805,15 +916,20 @@ async function salvarDisciplinaCatalogo(event) {
   limparMensagem();
 
   const id = document.getElementById('disc-id').value;
+  const checkboxesPre = document.querySelectorAll('input[name="disc-prereq-item"]:checked');
+  const prerequisitos_ids = Array.from(checkboxesPre).map((cb) => Number(cb.value));
+
   const payload = {
     codigo: document.getElementById('disc-codigo').value.toUpperCase(),
     curso_id: Number(document.getElementById('disc-curso').value),
     nome: document.getElementById('disc-nome').value,
     semestre_ideal: Number(document.getElementById('disc-semestre').value),
     ch_total: Number(document.getElementById('disc-ch').value),
+    tipo: document.getElementById('disc-tipo') ? document.getElementById('disc-tipo').value : 'Obrigatória',
     docente: document.getElementById('disc-docente').value,
     sala: document.getElementById('disc-sala').value,
-    horarios: document.getElementById('disc-horarios').value.toUpperCase()
+    horarios: document.getElementById('disc-horarios').value.toUpperCase(),
+    prerequisitos_ids
   };
 
   const url = id ? `/api/disciplinas/${id}` : '/api/disciplinas';
@@ -1195,4 +1311,212 @@ async function removerCurso(id, codigoOpcional) {
   await carregarSelectsDeCursos();
   exibirMensagem(dados.mensagem, 'success');
   consultarCursos();
+}
+
+
+// ============================================================================
+// CRUD 04 — CURRÍCULO DO CURSO (PARÂMETROS DE CH E GRADE POR SEMESTRE)
+// ============================================================================
+let listaCurriculosCache = [];
+
+function prepararNovoCurriculo() {
+  limparMensagem();
+  document.getElementById('form-curriculo').reset();
+  document.getElementById('curriculo-id').value = '';
+  document.getElementById('titulo-form-curriculo').textContent = 'Novo Currículo';
+  document.getElementById('curriculo-codigo').disabled = false;
+  document.getElementById('curriculo-ch-obrig').value = '2400';
+  document.getElementById('curriculo-ch-opt').value = '240';
+  document.getElementById('curriculo-ch-compl').value = '160';
+  document.getElementById('curriculo-ch-total').value = '2800';
+
+  const card = document.getElementById('card-form-curriculo');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+function fecharFormCurriculo() {
+  const card = document.getElementById('card-form-curriculo');
+  if (card) card.classList.add('hidden');
+}
+
+function fecharGradeCurriculo() {
+  const card = document.getElementById('card-grade-curriculo');
+  if (card) card.classList.add('hidden');
+}
+
+async function consultarCurriculos() {
+  const curso_id = document.getElementById('filtro-curriculo-curso')
+    ? document.getElementById('filtro-curriculo-curso').value
+    : 'TODOS';
+
+  const params = new URLSearchParams({ curso_id });
+  const resp = await fetch(`/api/curriculos?${params.toString()}`);
+  const curriculos = await resp.json();
+  listaCurriculosCache = curriculos;
+
+  const container = document.getElementById('tbody-curriculos');
+  container.innerHTML = '';
+
+  if (curriculos.length === 0) {
+    container.innerHTML = '<p class="empty-state">Nenhum currículo encontrado.</p>';
+    return;
+  }
+
+  curriculos.forEach((c) => {
+    container.innerHTML += `
+      <article class="item-card" data-curriculo-codigo="${c.codigo}">
+        <div class="item-card-header">
+          <span class="item-title">${c.codigo} — ${c.curso_nome || c.curso_codigo}</span>
+          <span class="badge badge-code">${c.status || 'Ativo'}</span>
+        </div>
+        <div class="item-meta">
+          <span><strong>Início de vigência:</strong> ${c.ano_semestre} &bull; <strong>Alunos vinculados:</strong> ${c.total_alunos || 0}</span>
+          <span><strong>CH Exigida:</strong> Obrigatórias ${c.ch_obrigatoria}h &bull; Optativas ${c.ch_optativa}h &bull; Compl. ${c.ch_complementar}h</span>
+          <span><strong>CH Total Mínima:</strong> ${c.ch_total}h</span>
+          <span><strong>Grade cadastrada:</strong> Obrigatórias ${c.ch_grade_obrigatoria || 0}h &bull; Optativas ${c.ch_grade_optativa || 0}h</span>
+        </div>
+        <div class="item-actions">
+          <button type="button" class="btn btn-secondary btn-grade-curriculo" onclick="abrirGradeCurriculo(${c.id})">
+            Ver Grade Curricular
+          </button>
+          <button type="button" class="btn btn-secondary btn-editar-curriculo" onclick="prepararEdicaoCurriculo(${c.id})">
+            Editar Parâmetros
+          </button>
+          <button type="button" class="btn btn-danger btn-remover-curriculo" onclick="removerCurriculo(${c.id})">
+            Excluir
+          </button>
+        </div>
+      </article>
+    `;
+  });
+}
+
+function prepararEdicaoCurriculo(idOuObj) {
+  limparMensagem();
+  const c =
+    typeof idOuObj === 'object'
+      ? idOuObj
+      : listaCurriculosCache.find((item) => item.id === Number(idOuObj));
+  if (!c) return;
+
+  document.getElementById('titulo-form-curriculo').textContent = `Editar Parâmetros (${c.codigo})`;
+  document.getElementById('curriculo-id').value = c.id;
+  document.getElementById('curriculo-codigo').value = c.codigo;
+  document.getElementById('curriculo-codigo').disabled = true;
+  document.getElementById('curriculo-ano').value = c.ano_semestre;
+  document.getElementById('curriculo-curso').value = c.curso_id;
+  document.getElementById('curriculo-ch-obrig').value = c.ch_obrigatoria;
+  document.getElementById('curriculo-ch-opt').value = c.ch_optativa;
+  document.getElementById('curriculo-ch-compl').value = c.ch_complementar;
+  document.getElementById('curriculo-ch-total').value = c.ch_total;
+
+  const card = document.getElementById('card-form-curriculo');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+async function salvarCurriculo(event) {
+  event.preventDefault();
+  limparMensagem();
+
+  const id = document.getElementById('curriculo-id').value;
+  const payload = {
+    codigo: document.getElementById('curriculo-codigo').value.toUpperCase(),
+    curso_id: Number(document.getElementById('curriculo-curso').value),
+    ano_semestre: document.getElementById('curriculo-ano').value.trim(),
+    ch_obrigatoria: Number(document.getElementById('curriculo-ch-obrig').value),
+    ch_optativa: Number(document.getElementById('curriculo-ch-opt').value),
+    ch_complementar: Number(document.getElementById('curriculo-ch-compl').value),
+    ch_total: Number(document.getElementById('curriculo-ch-total').value)
+  };
+
+  const url = id ? `/api/curriculos/${id}` : '/api/curriculos';
+  const metodo = id ? 'PUT' : 'POST';
+
+  const resp = await fetch(url, {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível salvar o currículo.', 'error');
+    return;
+  }
+
+  fecharFormCurriculo();
+  exibirMensagem(dados.mensagem, 'success');
+  consultarCurriculos();
+}
+
+async function removerCurriculo(id, codigoOpcional) {
+  limparMensagem();
+  const c = listaCurriculosCache.find((item) => item.id === Number(id));
+  const codigo = codigoOpcional || (c ? c.codigo : '');
+  if (!window.confirm(`Deseja realmente excluir o currículo ${codigo}?`)) return;
+
+  const resp = await fetch(`/api/curriculos/${id}`, { method: 'DELETE' });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível remover o currículo.', 'error');
+    return;
+  }
+
+  exibirMensagem(dados.mensagem, 'success');
+  consultarCurriculos();
+}
+
+async function abrirGradeCurriculo(curriculoId) {
+  limparMensagem();
+  const resp = await fetch(`/api/curriculos/${curriculoId}`);
+  const dados = await resp.json();
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Erro ao carregar grade do currículo.', 'error');
+    return;
+  }
+
+  const { curriculo, grade_por_periodo } = dados;
+  document.getElementById('titulo-grade-curriculo').textContent = `Grade Curricular: ${curriculo.codigo} (${curriculo.curso_codigo})`;
+  document.getElementById('resumo-grade-curriculo').textContent = `Vigência ${curriculo.ano_semestre} • Exige ${curriculo.ch_obrigatoria}h obrigatórias + ${curriculo.ch_optativa}h optativas (${curriculo.ch_total}h total)`;
+
+  const container = document.getElementById('lista-grade-curriculo');
+  container.innerHTML = '';
+
+  const periodos = Object.keys(grade_por_periodo).map(Number).sort((a, b) => a - b);
+  if (periodos.length === 0) {
+    container.innerHTML = '<p class="empty-state">Nenhuma disciplina cadastrada neste curso.</p>';
+  } else {
+    periodos.forEach((p) => {
+      const disciplinas = grade_por_periodo[p];
+      const chPeriodo = disciplinas.reduce((acc, d) => acc + d.ch_total, 0);
+      let htmlPeriodo = `
+        <div style="margin-top:0.8rem; margin-bottom:0.4rem; padding-bottom:0.2rem; border-bottom:1px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:#0f172a; font-size:0.85rem;">${p}º Período</strong>
+          <span style="font-size:0.75rem; color:#64748b;">${chPeriodo}h no período</span>
+        </div>
+      `;
+      disciplinas.forEach((d) => {
+        const badgeTipo = d.tipo === 'Optativa' ? '<span class="badge-optativa">Optativa</span>' : '<span class="badge-obrigatoria">Obrigatória</span>';
+        const prereqsTexto = d.prerequisitos_codigos && d.prerequisitos_codigos.length > 0
+          ? ` • Pré-req: ${d.prerequisitos_codigos.join(', ')}`
+          : '';
+        htmlPeriodo += `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0.2rem; border-bottom:1px dashed #f1f5f9; font-size:0.78rem;">
+            <div>
+              <strong>${d.codigo}</strong> — ${d.nome} (${d.ch_total}h) ${badgeTipo}
+              <div style="font-size:0.7rem; color:#64748b;">${d.docente}${prereqsTexto}</div>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML += htmlPeriodo;
+    });
+  }
+
+  const cardGrade = document.getElementById('card-grade-curriculo');
+  cardGrade.classList.remove('hidden');
+  cardGrade.scrollIntoView({ behavior: 'instant', block: 'start' });
 }
