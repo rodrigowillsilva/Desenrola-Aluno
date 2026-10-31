@@ -561,71 +561,71 @@ app.get('/api/cursos', cursoController.consultar);
 app.put('/api/cursos/:id', cursoController.alterar);
 app.delete('/api/cursos/:id', cursoController.remover);
 
-app.get('/api/curriculos', async (req, res) => {
-  try {
-    const { curso_id } = req.query;
-    let sql = 'SELECT * FROM TB_CURRICULO WHERE 1=1';
-    const params = [];
-    if (curso_id) {
-      sql += ' AND curso_id = ?';
-      params.push(Number(curso_id));
-    }
-    const rows = await all(sql, params);
-    return res.json(rows);
-  } catch (err) {
-    return res.status(500).json({ erro: err.message });
-  }
-});
+// ============================================================================
+// CURRÍCULO DO CURSO: PARÂMETROS DE INTEGRALIZAÇÃO E GRADE (curriculoController)
+// Regra: um único currículo por curso
+// ============================================================================
+function validarParametrosCurriculo(body) {
+  const chObrig = Number(body.ch_obrigatoria);
+  const chOpt = Number(body.ch_optativa);
+  const chCompl = Number(body.ch_complementar);
+  const chTotal = Number(body.ch_total);
 
-// ============================================================================
-// GRADE CURRICULAR: CRUD DE DISCIPLINAS (disciplinaController)
-// ============================================================================
-const disciplinaController = {
+  if (!Number.isInteger(chObrig) || chObrig < 160 || chObrig > 6000) {
+    return { erro: 'A carga horária mínima de disciplinas obrigatórias deve ser entre 160h e 6000h.' };
+  }
+  if (!Number.isInteger(chOpt) || chOpt < 0 || chOpt > 2000) {
+    return { erro: 'A carga horária mínima de optativas deve ser entre 0h e 2000h.' };
+  }
+  if (!Number.isInteger(chCompl) || chCompl < 0 || chCompl > 1000) {
+    return { erro: 'A carga horária de atividades complementares deve ser entre 0h e 1000h.' };
+  }
+  if (!Number.isInteger(chTotal) || chTotal < chObrig + chOpt + chCompl) {
+    return {
+      erro: `A carga horária total deve ser maior ou igual à soma das parcelas (${chObrig + chOpt + chCompl}h).`
+    };
+  }
+  return { valores: { chObrig, chOpt, chCompl, chTotal } };
+}
+
+const curriculoController = {
   async incluir(req, res) {
     try {
-      const { codigo, nome, curso_id, semestre_ideal, ch_total, docente, sala, horarios, cor } = req.body;
+      const { codigo, curso_id, ano_semestre } = req.body;
+      const codFormatado = String(codigo || '').trim().toUpperCase();
 
-      if (!codigo || !/^[A-Z0-9]{4,10}$/.test(String(codigo).trim().toUpperCase())) {
-        return res.status(400).json({
-          erro: 'O código da disciplina deve ter de 4 a 10 letras/números (ex: SDES06, COM210).'
-        });
-      }
-      if (!nome || String(nome).trim().length < 4 || String(nome).trim().length > 100) {
-        return res.status(400).json({ erro: 'Informe o nome completo da disciplina.' });
+      if (!/^[A-Z0-9]{2,10}-\d{4}$/.test(codFormatado)) {
+        return res.status(400).json({ erro: 'O código do currículo deve seguir o formato CURSO-ANO (ex: SIN-2027).' });
       }
       if (!curso_id) {
-        return res.status(400).json({ erro: 'Selecione o curso da disciplina.' });
+        return res.status(400).json({ erro: 'Selecione o curso do currículo.' });
       }
-      if (!horarios || String(horarios).trim() === '') {
-        return res.status(400).json({ erro: 'Informe os horários da disciplina (ex: SEG-M1,SEG-M2).' });
+      if (!/^\d{4}\.[12]$/.test(String(ano_semestre || '').trim())) {
+        return res.status(400).json({ erro: 'Informe o início de vigência no formato AAAA.1 ou AAAA.2.' });
       }
-
-      const codFormatado = String(codigo).trim().toUpperCase();
-      const existe = await get('SELECT id FROM TB_DISCIPLINA WHERE codigo = ?', [codFormatado]);
-      if (existe) {
-        return res.status(400).json({ erro: 'Já existe uma disciplina cadastrada com este código.' });
+      const curso = await get('SELECT * FROM TB_CURSO WHERE id = ?', [Number(curso_id)]);
+      if (!curso) {
+        return res.status(404).json({ erro: 'Curso não encontrado.' });
       }
+      const jaPossui = await get('SELECT codigo FROM TB_CURRICULO WHERE curso_id = ?', [curso.id]);
+      if (jaPossui) {
+        return res.status(400).json({
+          erro: `O curso ${curso.codigo} já possui o currículo ${jaPossui.codigo}. Cada curso tem um único currículo.`
+        });
+      }
+      const existeCod = await get('SELECT id FROM TB_CURRICULO WHERE codigo = ?', [codFormatado]);
+      if (existeCod) {
+        return res.status(400).json({ erro: 'Já existe um currículo cadastrado com este código.' });
+      }
+      const v = validarParametrosCurriculo(req.body);
+      if (v.erro) return res.status(400).json({ erro: v.erro });
 
       const result = await run(
-        `INSERT INTO TB_DISCIPLINA (codigo, nome, curso_id, semestre_ideal, ch_total, docente, sala, horarios, cor)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          codFormatado,
-          String(nome).trim(),
-          Number(curso_id),
-          Number(semestre_ideal) || 1,
-          Number(ch_total) || 64,
-          docente ? String(docente).trim() : 'Docente a definir',
-          sala ? String(sala).trim() : 'Sala a definir',
-          String(horarios).trim().toUpperCase(),
-          cor || '#2563eb'
-        ]
+        `INSERT INTO TB_CURRICULO (codigo, curso_id, ano_semestre, status, ch_obrigatoria, ch_optativa, ch_complementar, ch_total)
+         VALUES (?, ?, ?, 'Ativo (Vigente)', ?, ?, ?, ?)`,
+        [codFormatado, curso.id, String(ano_semestre).trim(), v.valores.chObrig, v.valores.chOpt, v.valores.chCompl, v.valores.chTotal]
       );
-
-      return res.status(201).json({
-        mensagem: 'Disciplina adicionada à grade curricular!',
-        id: result.lastID
-      });
+      return res.status(201).json({ mensagem: 'Currículo cadastrado com sucesso!', id: result.lastID });
     } catch (err) {
       return res.status(500).json({ erro: err.message });
     }
@@ -633,27 +633,52 @@ const disciplinaController = {
 
   async consultar(req, res) {
     try {
-      const { curso_id, busca } = req.query;
+      const { curso_id } = req.query;
       let sql = `
-        SELECT d.*, c.codigo as curso_codigo, c.nome as curso_nome
-        FROM TB_DISCIPLINA d
-        LEFT JOIN TB_CURSO c ON d.curso_id = c.id
+        SELECT cur.*, c.codigo as curso_codigo, c.nome as curso_nome,
+               (SELECT COUNT(*) FROM TB_USUARIO u WHERE u.curriculo_id = cur.id) as total_alunos,
+               (SELECT COALESCE(SUM(d.ch_total), 0) FROM TB_DISCIPLINA d
+                 WHERE d.curso_id = cur.curso_id AND d.tipo = 'Obrigatória') as ch_grade_obrigatoria,
+               (SELECT COALESCE(SUM(d.ch_total), 0) FROM TB_DISCIPLINA d
+                 WHERE d.curso_id = cur.curso_id AND d.tipo = 'Optativa') as ch_grade_optativa
+        FROM TB_CURRICULO cur
+        LEFT JOIN TB_CURSO c ON cur.curso_id = c.id
         WHERE 1=1
       `;
       const params = [];
-
       if (curso_id && curso_id !== 'TODOS') {
-        sql += ` AND d.curso_id = ?`;
+        sql += ' AND cur.curso_id = ?';
         params.push(Number(curso_id));
       }
-      if (busca && busca.trim() !== '') {
-        sql += ` AND (LOWER(d.nome) LIKE LOWER(?) OR LOWER(d.codigo) LIKE LOWER(?))`;
-        params.push(`%${busca.trim()}%`, `%${busca.trim()}%`);
-      }
-
-      sql += ` ORDER BY d.semestre_ideal ASC, d.codigo ASC`;
+      sql += ' ORDER BY cur.codigo ASC';
       const rows = await all(sql, params);
       return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+  },
+
+  async obterPorId(req, res) {
+    try {
+      const { id } = req.params;
+      const curriculo = await get(
+        `SELECT cur.*, c.codigo as curso_codigo, c.nome as curso_nome
+         FROM TB_CURRICULO cur
+         LEFT JOIN TB_CURSO c ON cur.curso_id = c.id
+         WHERE cur.id = ?`,
+        [id]
+      );
+      if (!curriculo) {
+        return res.status(404).json({ erro: 'Currículo não encontrado.' });
+      }
+      const disciplinas = await listarDisciplinasComPreRequisitos({ curso_id: curriculo.curso_id });
+      const grade_por_periodo = {};
+      for (const d of disciplinas) {
+        const sem = d.semestre_ideal || 0;
+        if (!grade_por_periodo[sem]) grade_por_periodo[sem] = [];
+        grade_por_periodo[sem].push(d);
+      }
+      return res.json({ curriculo, grade_por_periodo });
     } catch (err) {
       return res.status(500).json({ erro: err.message });
     }
@@ -662,44 +687,285 @@ const disciplinaController = {
   async alterar(req, res) {
     try {
       const { id } = req.params;
-      const { nome, curso_id, semestre_ideal, ch_total, docente, sala, horarios, cor } = req.body;
+      const atual = await get('SELECT * FROM TB_CURRICULO WHERE id = ?', [id]);
+      if (!atual) {
+        return res.status(404).json({ erro: 'Currículo não encontrado.' });
+      }
+      const v = validarParametrosCurriculo(req.body);
+      if (v.erro) return res.status(400).json({ erro: v.erro });
 
+      const ano = req.body.ano_semestre ? String(req.body.ano_semestre).trim() : atual.ano_semestre;
+      if (!/^\d{4}\.[12]$/.test(ano)) {
+        return res.status(400).json({ erro: 'Informe o início de vigência no formato AAAA.1 ou AAAA.2.' });
+      }
+
+      await run(
+        `UPDATE TB_CURRICULO
+         SET ano_semestre = ?, ch_obrigatoria = ?, ch_optativa = ?, ch_complementar = ?, ch_total = ?
+         WHERE id = ?`,
+        [ano, v.valores.chObrig, v.valores.chOpt, v.valores.chCompl, v.valores.chTotal, id]
+      );
+      return res.json({ mensagem: 'Parâmetros do currículo atualizados com sucesso!' });
+    } catch (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+  },
+
+  async remover(req, res) {
+    try {
+      const { id } = req.params;
+      const atual = await get('SELECT * FROM TB_CURRICULO WHERE id = ?', [id]);
+      if (!atual) {
+        return res.status(404).json({ erro: 'Currículo não encontrado.' });
+      }
+      const alunosVinculados = await get('SELECT COUNT(*) as total FROM TB_USUARIO WHERE curriculo_id = ?', [id]);
+      if (alunosVinculados && alunosVinculados.total > 0) {
+        return res.status(400).json({
+          erro: `Não é possível excluir o currículo ${atual.codigo}: existem ${alunosVinculados.total} discente(s) vinculado(s).`
+        });
+      }
+      await run('DELETE FROM TB_CURRICULO WHERE id = ?', [id]);
+      return res.json({ mensagem: 'Currículo removido com sucesso!' });
+    } catch (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+  }
+};
+
+app.post('/api/curriculos', curriculoController.incluir);
+app.get('/api/curriculos', curriculoController.consultar);
+app.get('/api/curriculos/:id', curriculoController.obterPorId);
+app.put('/api/curriculos/:id', curriculoController.alterar);
+app.delete('/api/curriculos/:id', curriculoController.remover);
+
+
+// ============================================================================
+// GRADE CURRICULAR: CRUD DE DISCIPLINAS E PRÉ-REQUISITOS (disciplinaController)
+// ============================================================================
+async function listarDisciplinasComPreRequisitos(filtros = {}) {
+  let sql = `
+    SELECT d.*, c.codigo as curso_codigo, c.nome as curso_nome
+    FROM TB_DISCIPLINA d
+    LEFT JOIN TB_CURSO c ON d.curso_id = c.id
+    WHERE 1=1
+  `;
+  const params = [];
+  if (filtros.curso_id && filtros.curso_id !== 'TODOS') {
+    sql += ' AND d.curso_id = ?';
+    params.push(Number(filtros.curso_id));
+  }
+  if (filtros.periodo && filtros.periodo !== 'TODOS') {
+    sql += ' AND d.semestre_ideal = ?';
+    params.push(Number(filtros.periodo));
+  }
+  if (filtros.tipo && filtros.tipo !== 'TODOS') {
+    sql += ' AND d.tipo = ?';
+    params.push(String(filtros.tipo));
+  }
+  if (filtros.busca) {
+    sql += ' AND (d.codigo LIKE ? OR d.nome LIKE ? OR d.docente LIKE ?)';
+    const term = `%${filtros.busca}%`;
+    params.push(term, term, term);
+  }
+  sql += ' ORDER BY d.semestre_ideal ASC, d.codigo ASC';
+  const disciplinas = await all(sql, params);
+
+  const todosPre = await all(`
+    SELECT p.disciplina_id, p.prerequisito_id, d.codigo as prerequisito_codigo, d.nome as prerequisito_nome
+    FROM TB_PRE_REQUISITO p
+    INNER JOIN TB_DISCIPLINA d ON p.prerequisito_id = d.id
+  `);
+
+  const mapaPre = new Map();
+  for (const item of todosPre) {
+    if (!mapaPre.has(item.disciplina_id)) mapaPre.set(item.disciplina_id, []);
+    mapaPre.get(item.disciplina_id).push(item);
+  }
+
+  return disciplinas.map((d) => {
+    const preList = mapaPre.get(d.id) || [];
+    return {
+      ...d,
+      prerequisitos: preList,
+      prerequisitos_codigos: preList.map((p) => p.prerequisito_codigo),
+      prerequisitos_ids: preList.map((p) => p.prerequisito_id)
+    };
+  });
+}
+
+// Detecção de dependência circular direta ou indireta
+async function temCicloDePreRequisito(disciplinaId, novosPreIds) {
+  const todosPre = await all('SELECT disciplina_id, prerequisito_id FROM TB_PRE_REQUISITO');
+  const adj = new Map();
+  for (const row of todosPre) {
+    if (Number(row.disciplina_id) === Number(disciplinaId)) continue;
+    if (!adj.has(row.disciplina_id)) adj.set(row.disciplina_id, []);
+    adj.get(row.disciplina_id).push(row.prerequisito_id);
+  }
+  adj.set(Number(disciplinaId), (novosPreIds || []).map(Number));
+
+  const visitado = new Set();
+  const naPilha = new Set();
+
+  function dfs(no) {
+    if (naPilha.has(no)) return true;
+    if (visitado.has(no)) return false;
+    visitado.add(no);
+    naPilha.add(no);
+    const vizinhos = adj.get(no) || [];
+    for (const v of vizinhos) {
+      if (dfs(v)) return true;
+    }
+    naPilha.delete(no);
+    return false;
+  }
+
+  return dfs(Number(disciplinaId));
+}
+
+function validarCamposDisciplina(body) {
+  const { codigo, curso_id, nome, semestre_ideal, ch_total, tipo, docente, sala, horarios } = body;
+  const cod = String(codigo || '').trim().toUpperCase();
+  const nom = String(nome || '').trim();
+
+  if (!/^[A-Z]{3}\d{3}$/.test(cod)) {
+    return { erro: 'O código da disciplina deve ter 3 letras maiúsculas e 3 dígitos (ex: SDES06, COM110).' };
+  }
+  if (!curso_id) {
+    return { erro: 'Selecione o curso vinculado à disciplina.' };
+  }
+  if (nom.length < 3 || nom.length > 80) {
+    return { erro: 'O nome da disciplina deve ter entre 3 e 80 caracteres.' };
+  }
+  const sem = Number(semestre_ideal);
+  if (!Number.isInteger(sem) || sem < 1 || sem > 12) {
+    return { erro: 'O período sugerido (semestre ideal) deve ser entre 1 e 12.' };
+  }
+  const ch = Number(ch_total);
+  if (![16, 32, 48, 64, 80, 96, 128].includes(ch)) {
+    return { erro: 'Carga horária inválida. Valores aceitos: 16h, 32h, 48h, 64h, 80h, 96h, 128h.' };
+  }
+  const tip = String(tipo || 'Obrigatória').trim();
+  if (!['Obrigatória', 'Optativa'].includes(tip)) {
+    return { erro: 'O tipo da disciplina deve ser Obrigatória ou Optativa.' };
+  }
+  if (!docente || String(docente).trim().length < 3) {
+    return { erro: 'Informe o(a) docente responsável (mínimo 3 caracteres).' };
+  }
+  if (!sala || String(sala).trim().length < 2) {
+    return { erro: 'Informe a sala de aula ou laboratório.' };
+  }
+  if (!horarios || String(horarios).trim().length < 3) {
+    return { erro: 'Informe os horários semanais ofertados (ex: SEG-M1,SEG-M2).' };
+  }
+
+  return { valores: { cod, curso_id: Number(curso_id), nom, sem, ch, tip, docente: String(docente).trim(), sala: String(sala).trim(), horarios: String(horarios).trim().toUpperCase() } };
+}
+
+const disciplinaController = {
+  async incluir(req, res) {
+    try {
+      const v = validarCamposDisciplina(req.body);
+      if (v.erro) return res.status(400).json({ erro: v.erro });
+      const { cod, curso_id, nom, sem, ch, tip, docente, sala, horarios } = v.valores;
+
+      const existe = await get('SELECT id FROM TB_DISCIPLINA WHERE codigo = ?', [cod]);
+      if (existe) {
+        return res.status(400).json({ erro: `Já existe uma disciplina cadastrada com o código ${cod}.` });
+      }
+
+      const curso = await get('SELECT id FROM TB_CURSO WHERE id = ?', [curso_id]);
+      if (!curso) {
+        return res.status(404).json({ erro: 'Curso vinculado não encontrado.' });
+      }
+
+      const prereqs = Array.isArray(req.body.prerequisitos_ids)
+        ? req.body.prerequisitos_ids.map(Number).filter((n) => Number.isInteger(n) && n > 0)
+        : [];
+
+      const result = await run(
+        `INSERT INTO TB_DISCIPLINA (codigo, nome, curso_id, semestre_ideal, ch_total, tipo, docente, sala, horarios, cor)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '#2563eb')`,
+        [cod, nom, curso_id, sem, ch, tip, docente, sala, horarios]
+      );
+      const novaId = result.lastID;
+
+      for (const preId of prereqs) {
+        if (preId !== novaId) {
+          await run('INSERT OR IGNORE INTO TB_PRE_REQUISITO (disciplina_id, prerequisito_id) VALUES (?, ?)', [novaId, preId]);
+        }
+      }
+
+      return res.status(201).json({ mensagem: 'Disciplina cadastrada com sucesso na grade!', id: novaId });
+    } catch (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+  },
+
+  async consultar(req, res) {
+    try {
+      const disciplinas = await listarDisciplinasComPreRequisitos(req.query);
+      return res.json(disciplinas);
+    } catch (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+  },
+
+  async alterar(req, res) {
+    try {
+      const { id } = req.params;
       const atual = await get('SELECT * FROM TB_DISCIPLINA WHERE id = ?', [id]);
       if (!atual) {
         return res.status(404).json({ erro: 'Disciplina não encontrada.' });
       }
-      if (!nome || String(nome).trim().length < 4) {
-        return res.status(400).json({ erro: 'Informe um nome válido para a disciplina.' });
-      }
-      if (!horarios || String(horarios).trim() === '') {
-        return res.status(400).json({ erro: 'Informe os horários da disciplina.' });
-      }
 
-      const novoNome = String(nome).trim();
-      const novoCursoId = curso_id ? Number(curso_id) : atual.curso_id;
-      const novoSem = Number(semestre_ideal) || atual.semestre_ideal;
-      const novaCh = Number(ch_total) || atual.ch_total;
-      const novoDocente = docente ? String(docente).trim() : atual.docente;
-      const novaSala = sala ? String(sala).trim() : atual.sala;
-      const novosHorarios = String(horarios).trim().toUpperCase();
-      const novaCor = cor || atual.cor;
+      const v = validarCamposDisciplina(req.body);
+      if (v.erro) return res.status(400).json({ erro: v.erro });
+      const { nom, curso_id, sem, ch, tip, docente, sala, horarios } = v.valores;
+
+      const prereqs = Array.isArray(req.body.prerequisitos_ids)
+        ? req.body.prerequisitos_ids.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n !== Number(id))
+        : [];
+
+      const temCiclo = await temCicloDePreRequisito(id, prereqs);
+      if (temCiclo) {
+        return res.status(400).json({
+          erro: 'Dependência circular detectada! Uma disciplina não pode exigir outra que direta ou indiretamente depende dela.'
+        });
+      }
 
       await run(
         `UPDATE TB_DISCIPLINA
-         SET nome = ?, curso_id = ?, semestre_ideal = ?, ch_total = ?, docente = ?, sala = ?, horarios = ?, cor = ?
+         SET nome = ?, curso_id = ?, semestre_ideal = ?, ch_total = ?, tipo = ?, docente = ?, sala = ?, horarios = ?
          WHERE id = ?`,
-        [novoNome, novoCursoId, novoSem, novaCh, novoDocente, novaSala, novosHorarios, novaCor, id]
+        [nom, curso_id, sem, ch, tip, docente, sala, horarios, id]
       );
 
-      // Atualiza também os registros vinculados dos alunos para refletir alterações de sala/docente/horário
-      await run(
-        `UPDATE TB_TURMA_ALUNO
-         SET nome = ?, ch_total = ?, docente = ?, sala = ?, horarios = ?, cor = ?
-         WHERE disciplina_id = ?`,
-        [novoNome, novaCh, novoDocente, novaSala, novosHorarios, novaCor, id]
-      );
+      await run('DELETE FROM TB_PRE_REQUISITO WHERE disciplina_id = ?', [id]);
+      for (const preId of prereqs) {
+        await run('INSERT OR IGNORE INTO TB_PRE_REQUISITO (disciplina_id, prerequisito_id) VALUES (?, ?)', [id, preId]);
+      }
 
       return res.json({ mensagem: 'Disciplina atualizada com sucesso!' });
+    } catch (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+  },
+
+  async ajustarNaGrade(req, res) {
+    try {
+      const { id } = req.params;
+      const { semestre_ideal, tipo } = req.body;
+      const atual = await get('SELECT * FROM TB_DISCIPLINA WHERE id = ?', [id]);
+      if (!atual) return res.status(404).json({ erro: 'Disciplina não encontrada.' });
+
+      const sem = Number(semestre_ideal);
+      if (!Number.isInteger(sem) || sem < 1 || sem > 12) {
+        return res.status(400).json({ erro: 'Período inválido.' });
+      }
+      const tip = tipo ? String(tipo).trim() : atual.tipo;
+      await run('UPDATE TB_DISCIPLINA SET semestre_ideal = ?, tipo = ? WHERE id = ?', [sem, tip, id]);
+      return res.json({ mensagem: 'Posição na grade atualizada!' });
     } catch (err) {
       return res.status(500).json({ erro: err.message });
     }
@@ -713,6 +979,29 @@ const disciplinaController = {
         return res.status(404).json({ erro: 'Disciplina não encontrada.' });
       }
 
+      const dependente = await get(
+        `SELECT d.codigo FROM TB_PRE_REQUISITO p
+         INNER JOIN TB_DISCIPLINA d ON p.disciplina_id = d.id
+         WHERE p.prerequisito_id = ? LIMIT 1`,
+        [id]
+      );
+      if (dependente) {
+        return res.status(400).json({
+          erro: `Não é possível remover ${atual.codigo}: ela é pré-requisito da disciplina ${dependente.codigo}.`
+        });
+      }
+
+      const cursando = await get(
+        `SELECT COUNT(*) as total FROM TB_TURMA_ALUNO WHERE disciplina_id = ? AND situacao = 'Cursando'`,
+        [id]
+      );
+      if (cursando && cursando.total > 0) {
+        return res.status(400).json({
+          erro: `Não é possível excluir ${atual.codigo}: ${cursando.total} aluno(s) estão cursando esta disciplina no semestre.`
+        });
+      }
+
+      await run('DELETE FROM TB_PRE_REQUISITO WHERE disciplina_id = ? OR prerequisito_id = ?', [id, id]);
       await run('DELETE FROM TB_TURMA_ALUNO WHERE disciplina_id = ?', [id]);
       await run('DELETE FROM TB_DISCIPLINA WHERE id = ?', [id]);
       return res.json({ mensagem: 'Disciplina removida da grade curricular!' });
@@ -725,7 +1014,9 @@ const disciplinaController = {
 app.post('/api/disciplinas', disciplinaController.incluir);
 app.get('/api/disciplinas', disciplinaController.consultar);
 app.put('/api/disciplinas/:id', disciplinaController.alterar);
+app.patch('/api/disciplinas/:id/grade', disciplinaController.ajustarNaGrade);
 app.delete('/api/disciplinas/:id', disciplinaController.remover);
+
 
 // ============================================================================
 // DISCIPLINAS, HORÁRIOS E PROGRESSO DO ALUNO (turmaAlunoController)
@@ -750,41 +1041,74 @@ app.get('/api/turmas', async (req, res) => {
 // Retorna o panorama completo da grade do aluno: Finalizadas, Fazendo no semestre e Ainda faltam
 app.get('/api/aluno/progresso', async (req, res) => {
   try {
-    const usuarioId = Number(req.query.usuario_id);
-    if (!usuarioId) {
-      return res.status(400).json({ erro: 'Informe o identificador do aluno.' });
-    }
-    await seedTurmasAluno(usuarioId);
-
+    const usuarioId = req.query.usuario_id || (req.session && req.session.usuario ? req.session.usuario.id : 2);
     const aluno = await get('SELECT * FROM TB_USUARIO WHERE id = ?', [usuarioId]);
     const cursoId = aluno && aluno.curso_id ? aluno.curso_id : 1;
 
-    const catalogoCurso = await all(
-      'SELECT * FROM TB_DISCIPLINA WHERE curso_id = ? ORDER BY semestre_ideal ASC, codigo ASC',
-      [cursoId]
-    );
+    const catalogoGeral = await listarDisciplinasComPreRequisitos();
+    const catalogoCurso = catalogoGeral.filter((d) => d.curso_id === cursoId);
+    const mapaPorCodigo = new Map(catalogoGeral.map((d) => [d.codigo, d]));
     const turmasAluno = await all(
       'SELECT * FROM TB_TURMA_ALUNO WHERE usuario_id = ? ORDER BY codigo ASC',
       [usuarioId]
     );
 
-    const fazendo = turmasAluno.filter((t) => t.situacao === 'Cursando');
-    const finalizadas = turmasAluno.filter((t) => t.situacao === 'Finalizada');
+    const codigosFinalizados = new Set(
+      turmasAluno.filter((t) => t.situacao === 'Finalizada').map((t) => t.codigo)
+    );
+
+    const enriquecer = (item) => {
+      const disc = mapaPorCodigo.get(item.codigo);
+      const codigosPre = disc ? disc.prerequisitos_codigos : [];
+      return {
+        ...item,
+        semestre_ideal: disc ? disc.semestre_ideal : item.semestre_ideal || 0,
+        tipo: disc ? disc.tipo : 'Obrigatória',
+        prerequisitos: codigosPre.map((cod) => ({ codigo: cod, cumprido: codigosFinalizados.has(cod) }))
+      };
+    };
+    const ordenar = (a, b) => a.semestre_ideal - b.semestre_ideal || a.codigo.localeCompare(b.codigo);
+
+    const fazendo = turmasAluno.filter((t) => t.situacao === 'Cursando').map(enriquecer).sort(ordenar);
+    const finalizadas = turmasAluno.filter((t) => t.situacao === 'Finalizada').map(enriquecer).sort(ordenar);
 
     const codigosVinculados = new Set(turmasAluno.map((t) => t.codigo));
-    const faltam = catalogoCurso.filter((d) => !codigosVinculados.has(d.codigo));
+    const faltam = catalogoCurso
+      .filter((d) => !codigosVinculados.has(d.codigo))
+      .map(enriquecer)
+      .sort(ordenar);
+
+    let curriculo = aluno && aluno.curriculo_id
+      ? await get('SELECT * FROM TB_CURRICULO WHERE id = ?', [aluno.curriculo_id])
+      : null;
+    if (!curriculo) {
+      curriculo = await get('SELECT * FROM TB_CURRICULO WHERE curso_id = ?', [cursoId]);
+    }
+    const somaCh = (lista, tipo) =>
+      lista.filter((d) => d.tipo === tipo).reduce((acc, d) => acc + Number(d.ch_total || 0), 0);
+
+    const ch = {
+      obrigatoria_cumprida: somaCh(finalizadas, 'Obrigatória'),
+      obrigatoria_exigida: curriculo ? curriculo.ch_obrigatoria : 0,
+      optativa_cumprida: somaCh(finalizadas, 'Optativa'),
+      optativa_exigida: curriculo ? curriculo.ch_optativa : 0,
+      complementar_exigida: curriculo ? curriculo.ch_complementar : 0,
+      total_exigido: curriculo ? curriculo.ch_total : 0
+    };
+    ch.total_cumprido = ch.obrigatoria_cumprida + Math.min(ch.optativa_cumprida, ch.optativa_exigida || ch.optativa_cumprida);
 
     return res.json({
       fazendo,
       finalizadas,
-      faltam
+      faltam,
+      ch,
+      curriculo: curriculo ? { codigo: curriculo.codigo, ano_semestre: curriculo.ano_semestre } : null
     });
   } catch (err) {
     return res.status(500).json({ erro: err.message });
   }
 });
 
-// Aluno adiciona uma disciplina da grade curricular para cursar no semestre atual
 app.post('/api/turmas', async (req, res) => {
   try {
     const { usuario_id, disciplina_id } = req.body;
@@ -902,6 +1226,7 @@ app.post('/api/test/reset', async (req, res) => {
   try {
     await run('DELETE FROM TB_TURMA_ALUNO');
     await run('DELETE FROM TB_GRADE_ALUNO');
+    await run('DELETE FROM TB_PRE_REQUISITO');
     await run('DELETE FROM TB_DISCIPLINA');
     await run('DELETE FROM TB_USUARIO');
     await run('DELETE FROM TB_CURRICULO');

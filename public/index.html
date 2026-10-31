@@ -283,6 +283,46 @@
           </div>
         </div>
 
+        <!-- Barra de Progresso de Carga Horária (Release 02 - RFS18) -->
+        <div id="ch-progresso" class="mobile-card ch-card">
+          <div class="ch-card-header">
+            <h3>Carga horária acumulada</h3>
+            <span id="ch-curriculo-codigo" class="badge badge-code">SIN-2023</span>
+          </div>
+
+          <div class="ch-metric">
+            <div class="ch-metric-label">
+              <span>Disciplinas Obrigatórias</span>
+              <strong id="ch-obrigatoria-texto">0h / 2400h</strong>
+            </div>
+            <div class="ch-progress-track">
+              <div id="ch-obrigatoria-barra" class="ch-progress-fill ch-fill-obrig" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="ch-metric">
+            <div class="ch-metric-label">
+              <span>Disciplinas Optativas</span>
+              <strong id="ch-optativa-texto">0h / 240h</strong>
+            </div>
+            <div class="ch-progress-track">
+              <div id="ch-optativa-barra" class="ch-progress-fill ch-fill-opt" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="ch-metric">
+            <div class="ch-metric-label">
+              <span>Carga Horária Total</span>
+              <strong id="ch-total-texto">0h / 2800h</strong>
+            </div>
+            <div class="ch-progress-track">
+              <div id="ch-total-barra" class="ch-progress-fill ch-fill-total" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <p id="ch-complementar-texto" class="ch-footer-note"></p>
+        </div>
+
         <!-- Filtros rápidos das 3 listas -->
         <div class="segmented-control">
           <button type="button" id="seg-todas" class="seg-btn active" onclick="filtrarSecaoProgresso('todas')">Todas</button>
@@ -365,8 +405,29 @@
                 </div>
                 <div class="field">
                   <label for="disc-ch">Carga horária (h) *</label>
-                  <input type="number" id="disc-ch" min="16" max="128" value="64" required>
+                  <select id="disc-ch" required>
+                    <option value="16">16h (1 crédito)</option>
+                    <option value="32">32h (2 créditos)</option>
+                    <option value="48">48h (3 créditos)</option>
+                    <option value="64" selected>64h (4 créditos)</option>
+                    <option value="80">80h (5 créditos)</option>
+                    <option value="96">96h (6 créditos)</option>
+                    <option value="128">128h (8 créditos)</option>
+                  </select>
                 </div>
+              </div>
+
+              <div class="field">
+                <label for="disc-tipo">Tipo de disciplina *</label>
+                <select id="disc-tipo" required>
+                  <option value="Obrigatória" selected>Obrigatória</option>
+                  <option value="Optativa">Optativa</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Pré-requisitos recomendados/obrigatórios</label>
+                <div id="disc-prereqs" class="prereq-picker"></div>
               </div>
 
               <div class="field-row">
@@ -403,6 +464,30 @@
                 <label for="filtro-disc-curso">Curso</label>
                 <select id="filtro-disc-curso">
                   <option value="TODOS">Todos</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="filtro-disc-periodo">Período / Semestre</label>
+                <select id="filtro-disc-periodo">
+                  <option value="TODOS">Todos os períodos</option>
+                  <option value="1">1º Período</option>
+                  <option value="2">2º Período</option>
+                  <option value="3">3º Período</option>
+                  <option value="4">4º Período</option>
+                  <option value="5">5º Período</option>
+                  <option value="6">6º Período</option>
+                  <option value="7">7º Período</option>
+                  <option value="8">8º Período</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filtro-disc-tipo">Tipo</label>
+                <select id="filtro-disc-tipo">
+                  <option value="TODOS">Todos os tipos</option>
+                  <option value="Obrigatória">Obrigatórias</option>
+                  <option value="Optativa">Optativas</option>
                 </select>
               </div>
             </div>
@@ -650,6 +735,95 @@
           <div id="tbody-cursos" class="cards-list"></div>
         </div>
 
+        <!-- ABA: CURRÍCULOS / MATRIZES CURRICULARES (CRUD 04) -->
+        <div id="aba-curriculo" class="tab-pane hidden">
+          <div class="section-top">
+            <div>
+              <h2>Matrizes Curriculares</h2>
+              <p class="section-desc">Parâmetros de carga horária e visualização da grade por período</p>
+            </div>
+            <button id="btn-novo-curriculo" class="btn btn-primary btn-pill" onclick="prepararNovoCurriculo()">
+              + Novo Currículo
+            </button>
+          </div>
+
+          <!-- Formulário de Currículo -->
+          <div id="card-form-curriculo" class="mobile-card form-sheet hidden">
+            <h3 id="titulo-form-curriculo">Novo Currículo</h3>
+            <form id="form-curriculo" onsubmit="salvarCurriculo(event)">
+              <input type="hidden" id="curriculo-id">
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="curriculo-codigo">Código do Currículo *</label>
+                  <input type="text" id="curriculo-codigo" placeholder="Ex: SIN-2023" required>
+                </div>
+                <div class="field">
+                  <label for="curriculo-ano">Ano / Vigência *</label>
+                  <input type="text" id="curriculo-ano" placeholder="Ex: 2023/1" required>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="curriculo-curso">Curso Vinculado *</label>
+                <select id="curriculo-curso" required></select>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="curriculo-ch-obrig">CH Obrigatórias (h) *</label>
+                  <input type="number" id="curriculo-ch-obrig" min="0" value="2400" required>
+                </div>
+                <div class="field">
+                  <label for="curriculo-ch-opt">CH Optativas (h) *</label>
+                  <input type="number" id="curriculo-ch-opt" min="0" value="240" required>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="curriculo-ch-compl">CH Complementares (h) *</label>
+                  <input type="number" id="curriculo-ch-compl" min="0" value="160" required>
+                </div>
+                <div class="field">
+                  <label for="curriculo-ch-total">CH Total Mínima (h) *</label>
+                  <input type="number" id="curriculo-ch-total" min="0" value="2800" required>
+                </div>
+              </div>
+
+              <div class="sheet-actions">
+                <button type="submit" id="btn-salvar-curriculo" class="btn btn-primary btn-block">Salvar Matriz</button>
+                <button type="button" id="btn-cancelar-curriculo" class="btn btn-ghost btn-block" onclick="fecharFormCurriculo()">Cancelar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Card de Grade Curricular Visual por Período -->
+          <div id="card-grade-curriculo" class="mobile-card hidden" style="margin-bottom:1rem; border:1px solid #cbd5e1;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+              <div>
+                <h3 id="titulo-grade-curriculo" style="margin:0; font-size:1rem;">Grade Curricular</h3>
+                <span id="resumo-grade-curriculo" style="font-size:0.75rem; color:#64748b;"></span>
+              </div>
+              <button type="button" id="btn-fechar-grade" class="btn btn-ghost" style="padding:0.2rem 0.5rem; font-size:0.8rem;" onclick="fecharGradeCurriculo()">Fechar</button>
+            </div>
+            <div id="lista-grade-curriculo"></div>
+          </div>
+
+          <!-- Filtro de Currículos -->
+          <div class="mobile-card filter-box">
+            <div class="field">
+              <label for="filtro-curriculo-curso">Filtrar por Curso</label>
+              <select id="filtro-curriculo-curso" onchange="consultarCurriculos()">
+                <option value="TODOS">Todos os cursos</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Lista de Cards de Currículos -->
+          <div id="tbody-curriculos" class="cards-list"></div>
+        </div>
+
       </section>
     </main>
 
@@ -673,7 +847,7 @@
       </button>
     </nav>
 
-    <!-- Barra de Navegação Inferior da COORDENAÇÃO (Disciplinas | Cursos | Usuários) -->
+    <!-- Barra de Navegação Inferior da COORDENAÇÃO (Disciplinas | Cursos | Currículos | Usuários) -->
     <nav id="bottom-nav" class="bottom-nav hidden">
       <button id="tab-disciplinas" class="nav-item" onclick="mostrarAba('disciplinas')">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -692,6 +866,15 @@
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
         </svg>
         <span class="nav-label">Cursos</span>
+      </button>
+      <button id="tab-curriculo" class="nav-item" onclick="mostrarAba('curriculo')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <span class="nav-label">Matrizes</span>
       </button>
       <button id="tab-usuarios" class="nav-item active" onclick="mostrarAba('usuarios')">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
