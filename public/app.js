@@ -61,6 +61,7 @@ function ocultarTodasAsViews() {
   document.getElementById('view-aluno-home').classList.add('hidden');
   document.getElementById('view-disciplina-detalhe').classList.add('hidden');
   document.getElementById('view-aluno-progresso').classList.add('hidden');
+  document.getElementById('view-aluno-avaliacoes').classList.add('hidden');
   document.getElementById('view-app').classList.add('hidden');
 }
 
@@ -441,6 +442,7 @@ function atualizarDadosTelaDisciplina(turma) {
   barra.style.backgroundColor = percentual >= 80 ? '#dc2626' : turma.cor;
 
   renderizarGradeHorarios('grade-horarios-individual', [turma], false);
+  carregarHistoricoFaltas(turma.id);
 }
 
 async function alterarFaltaDisciplinaAtual(delta) {
@@ -512,6 +514,7 @@ function voltarParaHomeAluno() {
   document.getElementById('view-aluno-home').classList.remove('hidden');
   document.getElementById('tab-aluno-semestre').classList.add('active');
   document.getElementById('tab-aluno-grade').classList.remove('active');
+  document.getElementById('tab-aluno-avaliacoes').classList.remove('active');
   renderizarListaDisciplinasAluno();
   renderizarGradeHorarios('grade-horarios-geral', turmasAlunoCache, true);
   window.scrollTo(0, 0);
@@ -526,6 +529,7 @@ async function abrirTelaProgressoAluno() {
   ocultarTodasAsViews();
   document.getElementById('view-aluno-progresso').classList.remove('hidden');
   document.getElementById('tab-aluno-semestre').classList.remove('active');
+  document.getElementById('tab-aluno-avaliacoes').classList.remove('active');
   document.getElementById('tab-aluno-grade').classList.add('active');
 
   await atualizarDadosProgressoAluno();
@@ -1519,4 +1523,335 @@ async function abrirGradeCurriculo(curriculoId) {
   const cardGrade = document.getElementById('card-grade-curriculo');
   cardGrade.classList.remove('hidden');
   cardGrade.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+
+// ============================================================================
+// UTILITÁRIOS DE DATA E TEXTO (RELEASE 03)
+// ============================================================================
+function escaparHtml(texto) {
+  return String(texto === null || texto === undefined ? '' : texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatarDataBR(iso) {
+  if (!iso) return '';
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+function diasAteData(iso) {
+  const [a, m, d] = iso.split('-').map(Number);
+  const alvo = new Date(a, m - 1, d);
+  const hoje = new Date();
+  const base = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  return Math.round((alvo - base) / 86400000);
+}
+
+// ============================================================================
+// CRUD 05 — HISTÓRICO DE FREQUÊNCIA DA DISCIPLINA (RF08)
+// ============================================================================
+let historicoFaltasCache = [];
+
+async function carregarHistoricoFaltas(turmaId) {
+  const resp = await fetch(`/api/turmas/${turmaId}/faltas`);
+  if (!resp.ok) return;
+  const dados = await resp.json();
+  historicoFaltasCache = dados.registros;
+
+  const container = document.getElementById('lista-faltas-historico');
+  container.innerHTML = '';
+
+  if (historicoFaltasCache.length === 0) {
+    container.innerHTML = '<p class="empty-state">Nenhuma falta registrada no histórico.</p>';
+    return;
+  }
+
+  historicoFaltasCache.forEach((r) => {
+    const just = r.justificativa ? escaparHtml(r.justificativa) : 'Sem justificativa';
+    container.innerHTML += `
+      <article class="item-card" data-falta-id="${r.id}">
+        <div class="item-card-header">
+          <span class="item-title">${formatarDataBR(r.data)}</span>
+          <span class="badge badge-todo">${r.horas}h</span>
+        </div>
+        <div class="item-meta">
+          <span><strong>Justificativa:</strong> ${just}</span>
+        </div>
+        <div class="item-actions">
+          <button type="button" class="btn btn-secondary btn-editar-falta" onclick="prepararEdicaoFalta(${r.id})">Editar</button>
+          <button type="button" class="btn btn-danger btn-remover-falta" onclick="removerFalta(${r.id})">Excluir</button>
+        </div>
+      </article>
+    `;
+  });
+}
+
+function prepararNovaFalta() {
+  limparMensagem();
+  document.getElementById('form-falta').reset();
+  document.getElementById('falta-id').value = '';
+  document.getElementById('titulo-form-falta').textContent = 'Registrar Falta';
+  document.getElementById('falta-data').value = hojeISO();
+  document.getElementById('falta-data').max = hojeISO();
+  document.getElementById('falta-horas').value = '1';
+  const card = document.getElementById('card-form-falta');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'center' });
+}
+
+function prepararEdicaoFalta(id) {
+  limparMensagem();
+  const r = historicoFaltasCache.find((item) => item.id === Number(id));
+  if (!r) return;
+  document.getElementById('titulo-form-falta').textContent = 'Editar Registro de Falta';
+  document.getElementById('falta-id').value = r.id;
+  document.getElementById('falta-data').max = hojeISO();
+  document.getElementById('falta-data').value = r.data;
+  document.getElementById('falta-horas').value = r.horas;
+  document.getElementById('falta-justificativa').value = r.justificativa || '';
+  const card = document.getElementById('card-form-falta');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'center' });
+}
+
+function fecharFormFalta() {
+  const card = document.getElementById('card-form-falta');
+  if (card) card.classList.add('hidden');
+}
+
+async function atualizarTurmaAposFalta(turma) {
+  disciplinaSelecionada = turma;
+  const idx = turmasAlunoCache.findIndex((t) => t.id === turma.id);
+  if (idx !== -1) turmasAlunoCache[idx] = turma;
+  atualizarDadosTelaDisciplina(turma);
+}
+
+async function salvarFalta(event) {
+  event.preventDefault();
+  limparMensagem();
+  if (!disciplinaSelecionada) return;
+
+  const id = document.getElementById('falta-id').value;
+  const payload = {
+    data: document.getElementById('falta-data').value,
+    horas: Number(document.getElementById('falta-horas').value),
+    justificativa: document.getElementById('falta-justificativa').value
+  };
+
+  const url = id ? `/api/faltas/${id}` : `/api/turmas/${disciplinaSelecionada.id}/faltas`;
+  const resp = await fetch(url, {
+    method: id ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível salvar o registro de falta.', 'error');
+    return;
+  }
+
+  fecharFormFalta();
+  await atualizarTurmaAposFalta(dados.turma);
+  exibirMensagem(dados.mensagem, 'success');
+}
+
+async function removerFalta(id) {
+  limparMensagem();
+  if (!window.confirm('Deseja realmente excluir este registro de falta?')) return;
+
+  const resp = await fetch(`/api/faltas/${id}`, { method: 'DELETE' });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível remover o registro.', 'error');
+    return;
+  }
+
+  await atualizarTurmaAposFalta(dados.turma);
+  exibirMensagem(dados.mensagem, 'success');
+}
+
+// ============================================================================
+// CRUD 06 — CALENDÁRIO DE AVALIAÇÕES DO ALUNO (RF09)
+// ============================================================================
+let listaAvaliacoesCache = [];
+
+async function abrirTelaAvaliacoesAluno() {
+  if (!usuarioLogado) return;
+  limparMensagem();
+  ocultarTodasAsViews();
+  document.getElementById('view-aluno-avaliacoes').classList.remove('hidden');
+  document.getElementById('tab-aluno-semestre').classList.remove('active');
+  document.getElementById('tab-aluno-grade').classList.remove('active');
+  document.getElementById('tab-aluno-avaliacoes').classList.add('active');
+
+  await atualizarDadosProgressoAluno();
+  preencherSelectsAvaliacao();
+  fecharFormAvaliacao();
+  await consultarAvaliacoes();
+  window.scrollTo(0, 0);
+}
+
+function preencherSelectsAvaliacao() {
+  const selForm = document.getElementById('avaliacao-disciplina');
+  const selFiltro = document.getElementById('filtro-aval-disciplina');
+  const valorFiltro = selFiltro.value || 'TODOS';
+
+  selForm.innerHTML = '';
+  selFiltro.innerHTML = '<option value="TODOS">Todas</option>';
+  (turmasAlunoCache || []).forEach((t) => {
+    selForm.innerHTML += `<option value="${t.id}">${escaparHtml(t.codigo)} - ${escaparHtml(t.nome)}</option>`;
+    selFiltro.innerHTML += `<option value="${t.id}">${escaparHtml(t.codigo)}</option>`;
+  });
+  selFiltro.value = valorFiltro;
+  if (selFiltro.value !== valorFiltro) selFiltro.value = 'TODOS';
+}
+
+function prepararNovaAvaliacao() {
+  limparMensagem();
+  document.getElementById('form-avaliacao').reset();
+  document.getElementById('avaliacao-id').value = '';
+  document.getElementById('titulo-form-avaliacao').textContent = 'Nova Avaliação';
+  document.getElementById('avaliacao-disciplina').disabled = false;
+  document.getElementById('avaliacao-peso').value = '30';
+  const card = document.getElementById('card-form-avaliacao');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+function fecharFormAvaliacao() {
+  const card = document.getElementById('card-form-avaliacao');
+  if (card) card.classList.add('hidden');
+}
+
+function prepararEdicaoAvaliacao(id) {
+  limparMensagem();
+  const a = listaAvaliacoesCache.find((item) => item.id === Number(id));
+  if (!a) return;
+
+  document.getElementById('titulo-form-avaliacao').textContent = `Editar Avaliação (${a.disciplina_codigo})`;
+  document.getElementById('avaliacao-id').value = a.id;
+  const sel = document.getElementById('avaliacao-disciplina');
+  sel.value = a.turma_id;
+  sel.disabled = true;
+  document.getElementById('avaliacao-tipo').value = a.tipo;
+  document.getElementById('avaliacao-data').value = a.data;
+  document.getElementById('avaliacao-titulo').value = a.titulo;
+  document.getElementById('avaliacao-peso').value = a.peso;
+  document.getElementById('avaliacao-nota').value = a.nota === null ? '' : a.nota;
+
+  const card = document.getElementById('card-form-avaliacao');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+function montarCardAvaliacao(a, passada) {
+  let aviso = '';
+  if (!passada) {
+    const dias = diasAteData(a.data);
+    const texto = dias === 0 ? 'Hoje' : dias === 1 ? 'Amanhã' : `Em ${dias} dias`;
+    aviso = `<span class="badge ${dias <= 7 ? 'badge-todo' : 'badge-doing'}">${texto}</span>`;
+  } else {
+    aviso = `<span class="badge badge-done">${a.nota === null ? 'Sem nota' : 'Nota ' + Number(a.nota).toFixed(1)}</span>`;
+  }
+
+  return `
+    <article class="item-card" data-avaliacao-id="${a.id}" data-avaliacao-titulo="${escaparHtml(a.titulo)}">
+      <div class="item-card-header">
+        <span class="item-title">${escaparHtml(a.titulo)}</span>
+        ${aviso}
+      </div>
+      <div class="item-meta">
+        <span><strong>Disciplina:</strong> ${escaparHtml(a.disciplina_codigo)} — ${escaparHtml(a.disciplina_nome)}</span>
+        <span><strong>Tipo:</strong> ${escaparHtml(a.tipo)} &bull; <strong>Data:</strong> ${formatarDataBR(a.data)} &bull; <strong>Peso:</strong> ${a.peso}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="btn btn-secondary btn-editar-avaliacao" onclick="prepararEdicaoAvaliacao(${a.id})">Editar</button>
+        <button type="button" class="btn btn-danger btn-remover-avaliacao" onclick="removerAvaliacao(${a.id})">Excluir</button>
+      </div>
+    </article>
+  `;
+}
+
+async function consultarAvaliacoes() {
+  if (!usuarioLogado) return;
+  const turmaId = document.getElementById('filtro-aval-disciplina').value;
+  const tipo = document.getElementById('filtro-aval-tipo').value;
+
+  const params = new URLSearchParams({ usuario_id: usuarioLogado.id, turma_id: turmaId, tipo });
+  const resp = await fetch(`/api/avaliacoes?${params.toString()}`);
+  const avaliacoes = await resp.json();
+  listaAvaliacoesCache = avaliacoes;
+
+  const hoje = hojeISO();
+  const proximas = avaliacoes.filter((a) => a.data >= hoje);
+  const passadas = avaliacoes.filter((a) => a.data < hoje).reverse();
+
+  const boxProx = document.getElementById('lista-avaliacoes-proximas');
+  const boxPass = document.getElementById('lista-avaliacoes-passadas');
+  boxProx.innerHTML = proximas.length
+    ? proximas.map((a) => montarCardAvaliacao(a, false)).join('')
+    : '<p class="empty-state">Nenhuma avaliação futura cadastrada.</p>';
+  boxPass.innerHTML = passadas.length
+    ? passadas.map((a) => montarCardAvaliacao(a, true)).join('')
+    : '<p class="empty-state">Nenhuma avaliação realizada.</p>';
+}
+
+async function salvarAvaliacao(event) {
+  event.preventDefault();
+  limparMensagem();
+
+  const id = document.getElementById('avaliacao-id').value;
+  const payload = {
+    usuario_id: usuarioLogado.id,
+    turma_id: Number(document.getElementById('avaliacao-disciplina').value || (id ? (listaAvaliacoesCache.find(x => x.id === Number(id)) || {}).turma_id : 0)),
+    tipo: document.getElementById('avaliacao-tipo').value,
+    data: document.getElementById('avaliacao-data').value,
+    titulo: document.getElementById('avaliacao-titulo').value,
+    peso: Number(document.getElementById('avaliacao-peso').value),
+    nota: document.getElementById('avaliacao-nota').value
+  };
+
+  const resp = await fetch(id ? `/api/avaliacoes/${id}` : '/api/avaliacoes', {
+    method: id ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível salvar a avaliação.', 'error');
+    return;
+  }
+
+  fecharFormAvaliacao();
+  exibirMensagem(dados.mensagem, 'success');
+  consultarAvaliacoes();
+}
+
+async function removerAvaliacao(id) {
+  limparMensagem();
+  const a = listaAvaliacoesCache.find((item) => item.id === Number(id));
+  if (!window.confirm(`Deseja realmente excluir a avaliação "${a ? a.titulo : ''}"?`)) return;
+
+  const resp = await fetch(`/api/avaliacoes/${id}`, { method: 'DELETE' });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível remover a avaliação.', 'error');
+    return;
+  }
+
+  exibirMensagem(dados.mensagem, 'success');
+  consultarAvaliacoes();
 }

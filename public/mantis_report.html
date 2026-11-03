@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>MantisBT — Desenrola Aluno (Release 01)</title>
+  <title>MantisBT — Desenrola Aluno (Release 03)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Open Sans', 'Segoe UI', Tahoma, sans-serif; }
     body { background-color: #f2f2f2; color: #393939; font-size: 13px; }
@@ -30,22 +30,22 @@
 <body>
   <div class="navbar">
     <div class="navbar-brand">MantisBT — Bug Tracker | Projeto: Desenrola Aluno (UNIFEI)</div>
-    <div class="navbar-user">Usuário: <strong>Gabriel Barbosa (Líder de QA / Gerente de Configuração)</strong> | Projeto: <strong>PRJ-DESENROLA-2026 (Release 01)</strong></div>
+    <div class="navbar-user">Usuário: <strong>Gabriel Barbosa (Líder de QA / Gerente de Configuração)</strong> | Projeto: <strong>PRJ-DESENROLA-2026 (Release 03)</strong></div>
   </div>
   <div class="subbar">
-    <div>Visão de Problemas (Viewing Issues) — Filtro Ativo: <strong>Versão Alvo = BASELINE_R01 (1 - 5 / 5)</strong></div>
-    <div>Status da Suite Selenium Mobile: <strong>9 / 9 Casos de Teste Aprovados</strong></div>
+    <div>Visão de Problemas (Viewing Issues) — Filtro Ativo: <strong>Versão Alvo = BASELINE_R03 (1 - 15 / 15)</strong></div>
+    <div>Status da Suite Selenium Mobile: <strong>25 / 25 Casos de Teste Aprovados (R01 + R02 + R03)</strong></div>
   </div>
 
   <div class="container">
     <div class="summary-cards">
       <div class="stat-card">
-        <h4>Total de Issues (Release 01)</h4>
-        <div class="num">5</div>
+        <h4>Total de Issues Acumulados (R01 a R03)</h4>
+        <div class="num">15</div>
       </div>
       <div class="stat-card" style="border-left-color: #87b87f;">
         <h4>Fechados / Resolvidos</h4>
-        <div class="num" style="color: #468847;">5 (100%)</div>
+        <div class="num" style="color: #468847;">15 (100%)</div>
       </div>
       <div class="stat-card" style="border-left-color: #d15b47;">
         <h4>Abertos / Pendentes</h4>
@@ -53,14 +53,14 @@
       </div>
       <div class="stat-card" style="border-left-color: #f89406;">
         <h4>Cobertura de Reteste (Selenium)</h4>
-        <div class="num" style="color: #c67605;">9 / 9 CTs (100%)</div>
+        <div class="num" style="color: #c67605;">25 / 25 CTs (100%)</div>
       </div>
     </div>
 
     <div class="widget-box">
       <div class="widget-header">
-        <span>Problemas Registrados na Release 01 (MantisBT Issues #0000101 a #0000105)</span>
-        <span>Baseline Associada: BASELINE_R01</span>
+        <span>Problemas Registrados na Release 03 (MantisBT Issues #0000111 a #0000115)</span>
+        <span>Baseline Associada: BASELINE_R03</span>
       </div>
       <table>
         <thead>
@@ -77,69 +77,192 @@
         </thead>
         <tbody>
           <tr>
+            <td><span class="issue-id">0000111</span></td>
+            <td>Histórico de Frequência e Faltas<br><small>RF08 / CT19</small></td>
+            <td><span class="sev-major">Maior (Major)</span></td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>04/02/2027</td>
+            <td>
+              <strong>Registro de falta aceitava data futura no histórico de frequência da disciplina</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Adicionada trava <code>data &gt; hojeISO()</code> em <code>validarRegistroFalta()</code> no backend e atributo <code>max</code> no input de data. Validado pelo <code>CT19</code> no Selenium.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000112</span></td>
+            <td>Histórico de Frequência e Faltas<br><small>RF08 / CT20 / CT21</small></td>
+            <td><span class="sev-critical">Crítico (Data Loss)</span></td>
+            <td>Urgente</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Gabriel Maia</td>
+            <td>08/02/2027</td>
+            <td>
+              <strong>Alteração ou exclusão de registro no histórico de faltas não recalculava o saldo acumulado da disciplina</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Atualizados os endpoints <code>PUT /api/faltas/:id</code> e <code>DELETE /api/faltas/:id</code> para recompor <code>faltas_horas</code> em <code>TB_TURMA_ALUNO</code>. Validado pelos <code>CT20</code> e <code>CT21</code>.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000113</span></td>
+            <td>Calendário de Avaliações<br><small>RF09 / CT23</small></td>
+            <td><span class="sev-major">Maior (Major)</span></td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>12/02/2027</td>
+            <td>
+              <strong>Sistema permitia cadastrar avaliação duplicada (mesmo título, data e disciplina) para o aluno</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Implementada verificação de unicidade <code>LOWER(titulo) + data + turma_id</code> no cadastro e edição de avaliações. Validado pelo <code>CT23</code> no Selenium.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000114</span></td>
+            <td>Calendário de Avaliações<br><small>RF09 / CT23</small></td>
+            <td>Médio (Minor)</td>
+            <td>Normal</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Gabriel Maia</td>
+            <td>15/02/2027</td>
+            <td>
+              <strong>Formulário de avaliação aceitava lançamento de nota fora da faixa de 0 a 10 e título com menos de 3 caracteres</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Adicionadas críticas de tamanho do título (3 a 80 caracteres) e faixa de nota (0 a 10) em <code>validarAvaliacao()</code>. Validado pelo <code>CT23</code>.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000115</span></td>
+            <td>Calendário de Avaliações<br><small>RF09 / CT25</small></td>
+            <td>Médio (Minor)</td>
+            <td>Alta</td>
+            <td><span class="status-resolved">resolvido (corrigido)</span></td>
+            <td>Leonardo Marinho</td>
+            <td>17/02/2027</td>
+            <td>
+              <strong>Ao editar avaliação com campo de disciplina desabilitado no mobile, o envio retornava erro 400 (disciplina vazia)</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Incluído fallback para recuperar <code>turma_id</code> do cache da avaliação em edição em <code>salvarAvaliacao()</code> (<code>app.js</code>). Validado pelo <code>CT25</code> no Selenium.</small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="widget-box">
+      <div class="widget-header">
+        <span>Histórico Consolidado — Releases 01 e 02 (Issues #0000101 a #0000110)</span>
+        <span>Baselines: BASELINE_R01 &amp; BASELINE_R02</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Categoria (Módulo)</th>
+            <th>Severidade</th>
+            <th>Prioridade</th>
+            <th>Status / Resolução</th>
+            <th>Atribuído a</th>
+            <th>Atualizado</th>
+            <th>Resumo do Problema</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
             <td><span class="issue-id">0000101</span></td>
-            <td>Perfis e Contas de Aluno<br><small>RFS01 / CT01</small></td>
+            <td>Perfis e Contas de Aluno (RFS01 / CT01)</td>
             <td><span class="sev-major">Maior (Major)</span></td>
             <td>Alta</td>
             <td><span class="status-closed">fechado (corrigido)</span></td>
             <td>Lucas Margelo</td>
             <td>26/12/2026</td>
-            <td>
-              <strong>Cadastro de conta de aluno aceitava CPF com 11 dígitos repetidos (ex: 111.111.111-11)</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Adicionada trava regex <code>/^(\d)\1{10}$/</code> antes do cálculo de dígitos verificadores em <code>validarCPF()</code>. Validado pelo <code>CT01</code> no Selenium.</small>
-            </td>
+            <td>Cadastro de conta de aluno aceitava CPF com 11 dígitos repetidos (ex: 111.111.111-11).</td>
           </tr>
           <tr>
             <td><span class="issue-id">0000102</span></td>
-            <td>Perfis e Contas de Aluno<br><small>RFS03 / CT03</small></td>
+            <td>Perfis e Contas de Aluno (RFS03 / CT03)</td>
             <td>Médio (Minor)</td>
             <td>Normal</td>
             <td><span class="status-closed">fechado (corrigido)</span></td>
             <td>Leonardo Marinho</td>
             <td>28/12/2026</td>
-            <td>
-              <strong>Campo de Número de Matrícula ficava habilitado ao abrir a edição de perfil do aluno no mobile</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Bloqueado o input <code>#usuario-matricula</code> com <code>disabled = true</code> na edição mobile e adicionada trava no backend <code>PUT /api/usuarios/:id</code>. Validado pelo <code>CT03</code>.</small>
-            </td>
+            <td>Campo de Número de Matrícula ficava habilitado ao abrir a edição de perfil do aluno no mobile.</td>
           </tr>
           <tr>
             <td><span class="issue-id">0000103</span></td>
-            <td>Perfis e Contas de Aluno<br><small>RFS04 / CT04</small></td>
+            <td>Perfis e Contas de Aluno (RFS04 / CT04)</td>
             <td><span class="sev-critical">Crítico (Crash)</span></td>
             <td>Urgente</td>
             <td><span class="status-closed">fechado (corrigido)</span></td>
             <td>Lucas Margelo</td>
             <td>29/12/2026</td>
-            <td>
-              <strong>Sistema permitia excluir o único administrador ativo da coordenação</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Implementada verificação de contagem de administradores ativos antes do DELETE. Validado pelo <code>CT04</code> no Selenium.</small>
-            </td>
+            <td>Sistema permitia excluir o único administrador ativo da coordenação.</td>
           </tr>
           <tr>
             <td><span class="issue-id">0000104</span></td>
-            <td>Catálogo de Cursos UNIFEI<br><small>RFS05 / CT05</small></td>
+            <td>Catálogo de Cursos UNIFEI (RFS05 / CT05)</td>
             <td>Médio (Minor)</td>
             <td>Normal</td>
             <td><span class="status-closed">fechado (corrigido)</span></td>
             <td>Gabriel Maia</td>
             <td>30/12/2026</td>
-            <td>
-              <strong>Formulário de curso aceitava Prazo Máximo de integralização menor que a Duração Ideal</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Adicionada regra <code>dMaxima &gt;= dPadrao</code> no cadastro e edição de cursos. Validado pelo <code>CT05</code>.</small>
-            </td>
+            <td>Formulário de curso aceitava Prazo Máximo de integralização menor que a Duração Ideal.</td>
           </tr>
           <tr>
             <td><span class="issue-id">0000105</span></td>
-            <td>Interface Mobile / Cursos<br><small>RNF01 / RFS08 / CT08</small></td>
+            <td>Interface Mobile / Cursos (RNF01 / CT08)</td>
             <td><span class="sev-major">Maior (Major)</span></td>
             <td>Alta</td>
-            <td><span class="status-resolved">resolvido (corrigido)</span></td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
             <td>Leonardo Marinho</td>
             <td>31/12/2026</td>
-            <td>
-              <strong>Barra inferior de navegação mobile (Bottom Nav) sobrepunha o botão de ação do último card da lista em telas pequenas</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Ajustado o posicionamento <code>sticky</code> da <code>.bottom-nav</code> e o padding inferior do container mobile. Validado pelo <code>CT08</code> no Selenium.</small>
-            </td>
+            <td>Barra inferior de navegação mobile (Bottom Nav) sobrepunha o botão de ação do último card da lista.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000106</span></td>
+            <td>Grade Curricular e Pré-requisitos (RFS11 / CT11)</td>
+            <td><span class="sev-critical">Crítico (Crash)</span></td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>08/01/2027</td>
+            <td>Sistema permitia cadastrar dependência circular direta e indireta entre pré-requisitos curriculares.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000107</span></td>
+            <td>Grade Curricular e Pré-requisitos (RFS12 / CT14)</td>
+            <td><span class="sev-major">Maior (Major)</span></td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>10/01/2027</td>
+            <td>Exclusão de disciplina que servia de pré-requisito para outra matéria não era bloqueada.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000108</span></td>
+            <td>Currículos e Parâmetros de CH (RFS13 / CT15)</td>
+            <td>Médio (Minor)</td>
+            <td>Normal</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Gabriel Maia</td>
+            <td>14/01/2027</td>
+            <td>Formulário de currículo aceitava carga horária total inferior à soma das parcelas.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000109</span></td>
+            <td>Acompanhamento do Aluno (RFS17 / CT17)</td>
+            <td>Médio (Minor)</td>
+            <td>Normal</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Gabriel Maia</td>
+            <td>17/01/2027</td>
+            <td>Disciplinas optativas cursadas em excesso eram contabilizadas na barra de obrigatórias.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000110</span></td>
+            <td>Acompanhamento do Aluno (RFS18 / CT17)</td>
+            <td>Menor (Tweak)</td>
+            <td>Baixa</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Leonardo Marinho</td>
+            <td>20/01/2027</td>
+            <td>Tag de indicador de pré-requisito não diferenciava visualmente matéria cumprida de matéria pendente.</td>
           </tr>
         </tbody>
       </table>

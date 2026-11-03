@@ -139,6 +139,33 @@ async function initDatabase() {
     )
   `);
 
+  // Release 03: Histórico de Frequência (CRUD 05) e Calendário de Avaliações (CRUD 06)
+  await run(`
+    CREATE TABLE IF NOT EXISTS TB_FALTA_REGISTRO (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      turma_id INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      horas INTEGER NOT NULL DEFAULT 1,
+      justificativa TEXT NOT NULL DEFAULT '',
+      FOREIGN KEY (turma_id) REFERENCES TB_TURMA_ALUNO(id) ON DELETE CASCADE
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS TB_AVALIACAO (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL,
+      turma_id INTEGER NOT NULL,
+      tipo TEXT NOT NULL,
+      titulo TEXT NOT NULL,
+      data TEXT NOT NULL,
+      peso REAL NOT NULL DEFAULT 1,
+      nota REAL,
+      FOREIGN KEY (usuario_id) REFERENCES TB_USUARIO(id) ON DELETE CASCADE,
+      FOREIGN KEY (turma_id) REFERENCES TB_TURMA_ALUNO(id) ON DELETE CASCADE
+    )
+  `);
+
   await adicionarColunaSeNaoExistir('TB_DISCIPLINA', 'tipo', "TEXT NOT NULL DEFAULT 'Obrigatória'");
   await adicionarColunaSeNaoExistir('TB_CURRICULO', 'ch_total', 'INTEGER NOT NULL DEFAULT 3200');
 
@@ -473,14 +500,48 @@ async function seedTurmasAluno(usuarioId) {
     }
   }
 
+  const dataRelativa = (dias) => {
+    const d = new Date();
+    d.setDate(d.getDate() + dias);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  };
+
   for (const item of codigosCursando) {
     const disc = await get('SELECT * FROM TB_DISCIPLINA WHERE codigo = ?', [item.codigo]);
     if (disc) {
-      await run(
+      const turma = await run(
         `INSERT INTO TB_TURMA_ALUNO (usuario_id, disciplina_id, codigo, nome, docente, sala, ch_total, faltas_horas, horarios, cor, situacao)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Cursando')`,
         [usuarioId, disc.id, disc.codigo, disc.nome, disc.docente, disc.sala, disc.ch_total, item.faltas, disc.horarios, disc.cor]
       );
+
+      // Histórico de frequência coerente com o total de faltas semeado
+      if (item.faltas > 0) {
+        await run(
+          `INSERT INTO TB_FALTA_REGISTRO (turma_id, data, horas, justificativa) VALUES (?, ?, ?, ?)`,
+          [turma.lastID, dataRelativa(-10), item.faltas, '']
+        );
+      }
+
+      // Avaliações de demonstração
+      if (item.codigo === 'SDES06') {
+        await run(
+          `INSERT INTO TB_AVALIACAO (usuario_id, turma_id, tipo, titulo, data, peso, nota) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [usuarioId, turma.lastID, 'Prova', 'Prova 1 - Gerência de Projetos', dataRelativa(-14), 30, 7.5]
+        );
+        await run(
+          `INSERT INTO TB_AVALIACAO (usuario_id, turma_id, tipo, titulo, data, peso, nota) VALUES (?, ?, ?, ?, ?, ?, NULL)`,
+          [usuarioId, turma.lastID, 'Trabalho', 'Entrega do Status Report', dataRelativa(5), 20]
+        );
+      }
+      if (item.codigo === 'COM210') {
+        await run(
+          `INSERT INTO TB_AVALIACAO (usuario_id, turma_id, tipo, titulo, data, peso, nota) VALUES (?, ?, ?, ?, ?, ?, NULL)`,
+          [usuarioId, turma.lastID, 'Prova', 'Prova 2', dataRelativa(12), 35]
+        );
+      }
     }
   }
 }

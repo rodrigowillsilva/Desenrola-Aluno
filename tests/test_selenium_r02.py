@@ -194,7 +194,9 @@ def test_CT14_impedir_exclusao_disciplina_prerequisito(driver):
 # CT15 — Incluir e Consultar Currículo com Parâmetros de CH (RFS13 / RFS14)
 # ============================================================================
 def test_CT15_crud_curriculo_parametros(driver):
+    fazer_login(driver, "admin@unifei.edu.br", "Admin123")
     clicar(driver, driver.find_element(By.ID, "tab-curriculo"))
+    time.sleep(PAUSA_ENTRE_ACOES)
 
     # Verifica se os currículos existentes estão listados
     texto_curr = driver.find_element(By.ID, "tbody-curriculos").text

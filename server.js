@@ -1162,6 +1162,120 @@ app.post('/api/turmas', async (req, res) => {
   }
 });
 
+// ============================================================================
+// CRUD 05 — FREQUÊNCIA: HISTÓRICO DE FALTAS POR DISCIPLINA (RF08)
+// ============================================================================
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dataISOValida(texto) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(texto || ''))) return false;
+  const [a, m, d] = texto.split('-').map(Number);
+  const dt = new Date(a, m - 1, d);
+  return dt.getFullYear() === a && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
+
+function validarRegistroFalta(body) {
+  const data = body.data || hojeISO();
+  const horas = body.horas === undefined || body.horas === '' ? 1 : Number(body.horas);
+  const justificativa = String(body.justificativa || '').trim();
+
+  if (!dataISOValida(data)) return { erro: 'Informe uma data válida para a falta.' };
+  if (data > hojeISO()) return { erro: 'A data da falta não pode ser futura.' };
+  if (!Number.isInteger(horas) || horas < 1 || horas > 8) {
+    return { erro: 'As horas de falta devem ser um número inteiro entre 1 e 8.' };
+  }
+  if (justificativa.length > 200) return { erro: 'A justificativa deve ter no máximo 200 caracteres.' };
+  return { valores: { data, horas, justificativa } };
+}
+
+app.get('/api/turmas/:id/faltas', async (req, res) => {
+  try {
+    const turma = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [req.params.id]);
+    if (!turma) return res.status(404).json({ erro: 'Disciplina não encontrada.' });
+    const registros = await all(
+      'SELECT * FROM TB_FALTA_REGISTRO WHERE turma_id = ? ORDER BY data DESC, id DESC',
+      [turma.id]
+    );
+    return res.json({ turma, registros });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/turmas/:id/faltas', async (req, res) => {
+  try {
+    const turma = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [req.params.id]);
+    if (!turma) return res.status(404).json({ erro: 'Disciplina não encontrada.' });
+
+    const v = validarRegistroFalta(req.body);
+    if (v.erro) return res.status(400).json({ erro: v.erro });
+
+    const { data, horas, justificativa } = v.valores;
+    const novoTotal = Math.min(turma.ch_total, turma.faltas_horas + horas);
+    await run('INSERT INTO TB_FALTA_REGISTRO (turma_id, data, horas, justificativa) VALUES (?, ?, ?, ?)', [
+      turma.id,
+      data,
+      horas,
+      justificativa
+    ]);
+    await run('UPDATE TB_TURMA_ALUNO SET faltas_horas = ? WHERE id = ?', [novoTotal, turma.id]);
+
+    const atualizada = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [turma.id]);
+    return res.status(201).json({ mensagem: 'Falta registrada no histórico.', turma: atualizada });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/faltas/:id', async (req, res) => {
+  try {
+    const registro = await get('SELECT * FROM TB_FALTA_REGISTRO WHERE id = ?', [req.params.id]);
+    if (!registro) return res.status(404).json({ erro: 'Registro de falta não encontrado.' });
+    const turma = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [registro.turma_id]);
+
+    const v = validarRegistroFalta(req.body);
+    if (v.erro) return res.status(400).json({ erro: v.erro });
+
+    const { data, horas, justificativa } = v.valores;
+    const novoTotal = Math.max(0, Math.min(turma.ch_total, turma.faltas_horas - registro.horas + horas));
+    await run('UPDATE TB_FALTA_REGISTRO SET data = ?, horas = ?, justificativa = ? WHERE id = ?', [
+      data,
+      horas,
+      justificativa,
+      registro.id
+    ]);
+    await run('UPDATE TB_TURMA_ALUNO SET faltas_horas = ? WHERE id = ?', [novoTotal, turma.id]);
+
+    const atualizada = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [turma.id]);
+    return res.json({ mensagem: 'Registro de falta atualizado com sucesso!', turma: atualizada });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.delete('/api/faltas/:id', async (req, res) => {
+  try {
+    const registro = await get('SELECT * FROM TB_FALTA_REGISTRO WHERE id = ?', [req.params.id]);
+    if (!registro) return res.status(404).json({ erro: 'Registro de falta não encontrado.' });
+    const turma = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [registro.turma_id]);
+
+    await run('DELETE FROM TB_FALTA_REGISTRO WHERE id = ?', [registro.id]);
+    await run('UPDATE TB_TURMA_ALUNO SET faltas_horas = ? WHERE id = ?', [
+      Math.max(0, turma.faltas_horas - registro.horas),
+      turma.id
+    ]);
+
+    const atualizada = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [turma.id]);
+    return res.json({ mensagem: 'Registro de falta removido do histórico.', turma: atualizada });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// Atalho do contador +/-: cada +1 gera um registro no histórico; cada -1 remove o registro mais recente
 app.post('/api/turmas/:id/falta', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1174,6 +1288,31 @@ app.post('/api/turmas/:id/falta', async (req, res) => {
     }
 
     const novasFaltas = Math.max(0, Math.min(turma.ch_total, turma.faltas_horas + incremento));
+    if (novasFaltas !== turma.faltas_horas) {
+      if (incremento > 0) {
+        await run('INSERT INTO TB_FALTA_REGISTRO (turma_id, data, horas, justificativa) VALUES (?, ?, ?, ?)', [
+          turma.id,
+          hojeISO(),
+          novasFaltas - turma.faltas_horas,
+          ''
+        ]);
+      } else {
+        let restante = turma.faltas_horas - novasFaltas;
+        const registros = await all('SELECT * FROM TB_FALTA_REGISTRO WHERE turma_id = ? ORDER BY data DESC, id DESC', [
+          turma.id
+        ]);
+        for (const r of registros) {
+          if (restante <= 0) break;
+          if (r.horas <= restante) {
+            await run('DELETE FROM TB_FALTA_REGISTRO WHERE id = ?', [r.id]);
+            restante -= r.horas;
+          } else {
+            await run('UPDATE TB_FALTA_REGISTRO SET horas = ? WHERE id = ?', [r.horas - restante, r.id]);
+            restante = 0;
+          }
+        }
+      }
+    }
     await run('UPDATE TB_TURMA_ALUNO SET faltas_horas = ? WHERE id = ?', [novasFaltas, id]);
 
     const atualizada = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [id]);
@@ -1181,6 +1320,131 @@ app.post('/api/turmas/:id/falta', async (req, res) => {
       mensagem: incremento > 0 ? 'Falta adicionada na disciplina.' : 'Falta removida da disciplina.',
       turma: atualizada
     });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// ============================================================================
+// CRUD 06 — CALENDÁRIO DE AVALIAÇÕES DO ALUNO (RF09)
+// ============================================================================
+const TIPOS_AVALIACAO = ['Prova', 'Trabalho', 'Seminário', 'Outro'];
+
+function validarAvaliacao(body) {
+  const titulo = String(body.titulo || '').trim();
+  const tipo = body.tipo;
+  const data = body.data;
+  const peso = Number(body.peso);
+  const notaInformada = body.nota !== undefined && body.nota !== null && body.nota !== '';
+  const nota = notaInformada ? Number(body.nota) : null;
+
+  if (titulo.length < 3 || titulo.length > 80) {
+    return { erro: 'O título da avaliação deve ter entre 3 e 80 caracteres.' };
+  }
+  if (!TIPOS_AVALIACAO.includes(tipo)) return { erro: 'Tipo de avaliação inválido.' };
+  if (!dataISOValida(data)) return { erro: 'Informe uma data válida para a avaliação.' };
+  if (!Number.isFinite(peso) || peso < 1 || peso > 100) {
+    return { erro: 'O peso da avaliação deve estar entre 1 e 100.' };
+  }
+  if (notaInformada && (!Number.isFinite(nota) || nota < 0 || nota > 10)) {
+    return { erro: 'A nota deve estar entre 0 e 10.' };
+  }
+  return { valores: { titulo, tipo, data, peso, nota } };
+}
+
+const SQL_AVALIACAO = `
+  SELECT a.*, t.codigo AS disciplina_codigo, t.nome AS disciplina_nome, t.cor AS disciplina_cor
+  FROM TB_AVALIACAO a
+  JOIN TB_TURMA_ALUNO t ON t.id = a.turma_id
+`;
+
+app.get('/api/avaliacoes', async (req, res) => {
+  try {
+    const { usuario_id, turma_id, tipo } = req.query;
+    if (!usuario_id) return res.status(400).json({ erro: 'Usuário não informado.' });
+
+    const filtros = ['a.usuario_id = ?'];
+    const params = [usuario_id];
+    if (turma_id && turma_id !== 'TODOS') {
+      filtros.push('a.turma_id = ?');
+      params.push(turma_id);
+    }
+    if (tipo && tipo !== 'TODOS') {
+      filtros.push('a.tipo = ?');
+      params.push(tipo);
+    }
+
+    const avaliacoes = await all(`${SQL_AVALIACAO} WHERE ${filtros.join(' AND ')} ORDER BY a.data ASC, a.id ASC`, params);
+    return res.json(avaliacoes);
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/avaliacoes', async (req, res) => {
+  try {
+    const { usuario_id, turma_id } = req.body;
+    if (!usuario_id || !turma_id) {
+      return res.status(400).json({ erro: 'Selecione a disciplina da avaliação.' });
+    }
+    const turma = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ? AND usuario_id = ?', [turma_id, usuario_id]);
+    if (!turma) return res.status(404).json({ erro: 'Disciplina não encontrada no seu semestre.' });
+
+    const v = validarAvaliacao(req.body);
+    if (v.erro) return res.status(400).json({ erro: v.erro });
+
+    const { titulo, tipo, data, peso, nota } = v.valores;
+    const dup = await get(
+      'SELECT id FROM TB_AVALIACAO WHERE turma_id = ? AND LOWER(titulo) = LOWER(?) AND data = ?',
+      [turma.id, titulo, data]
+    );
+    if (dup) return res.status(409).json({ erro: 'Já existe uma avaliação com este título e data nesta disciplina.' });
+
+    const r = await run(
+      'INSERT INTO TB_AVALIACAO (usuario_id, turma_id, tipo, titulo, data, peso, nota) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [usuario_id, turma.id, tipo, titulo, data, peso, nota]
+    );
+    return res.status(201).json({ mensagem: 'Avaliação cadastrada com sucesso!', id: r.lastID });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/avaliacoes/:id', async (req, res) => {
+  try {
+    const atual = await get('SELECT * FROM TB_AVALIACAO WHERE id = ?', [req.params.id]);
+    if (!atual) return res.status(404).json({ erro: 'Avaliação não encontrada.' });
+
+    const v = validarAvaliacao(req.body);
+    if (v.erro) return res.status(400).json({ erro: v.erro });
+
+    const { titulo, tipo, data, peso, nota } = v.valores;
+    const dup = await get(
+      'SELECT id FROM TB_AVALIACAO WHERE turma_id = ? AND LOWER(titulo) = LOWER(?) AND data = ? AND id <> ?',
+      [atual.turma_id, titulo, data, atual.id]
+    );
+    if (dup) return res.status(409).json({ erro: 'Já existe uma avaliação com este título e data nesta disciplina.' });
+
+    await run('UPDATE TB_AVALIACAO SET tipo = ?, titulo = ?, data = ?, peso = ?, nota = ? WHERE id = ?', [
+      tipo,
+      titulo,
+      data,
+      peso,
+      nota,
+      atual.id
+    ]);
+    return res.json({ mensagem: 'Avaliação atualizada com sucesso!' });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.delete('/api/avaliacoes/:id', async (req, res) => {
+  try {
+    const atual = await get('SELECT * FROM TB_AVALIACAO WHERE id = ?', [req.params.id]);
+    if (!atual) return res.status(404).json({ erro: 'Avaliação não encontrada.' });
+    await run('DELETE FROM TB_AVALIACAO WHERE id = ?', [atual.id]);
+    return res.json({ mensagem: 'Avaliação removida com sucesso!' });
   } catch (err) {
     return res.status(500).json({ erro: err.message });
   }
@@ -1213,6 +1477,8 @@ app.delete('/api/turmas/:id', async (req, res) => {
       return res.status(404).json({ erro: 'Disciplina não encontrada.' });
     }
 
+    await run('DELETE FROM TB_AVALIACAO WHERE turma_id = ?', [id]);
+    await run('DELETE FROM TB_FALTA_REGISTRO WHERE turma_id = ?', [id]);
     await run('DELETE FROM TB_TURMA_ALUNO WHERE id = ?', [id]);
     return res.json({
       mensagem: `Disciplina ${turma.codigo} retirada do semestre atual.`
@@ -1224,6 +1490,8 @@ app.delete('/api/turmas/:id', async (req, res) => {
 
 app.post('/api/test/reset', async (req, res) => {
   try {
+    await run('DELETE FROM TB_AVALIACAO');
+    await run('DELETE FROM TB_FALTA_REGISTRO');
     await run('DELETE FROM TB_TURMA_ALUNO');
     await run('DELETE FROM TB_GRADE_ALUNO');
     await run('DELETE FROM TB_PRE_REQUISITO');
