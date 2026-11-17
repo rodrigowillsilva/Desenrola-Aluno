@@ -23,7 +23,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 
 BASE_URL = "http://localhost:3000"
-PAUSA_ENTRE_ACOES = 0.25
+PAUSA_ENTRE_ACOES = 1.5
 
 
 @pytest.fixture(scope="module")
@@ -32,7 +32,7 @@ def driver():
 
     options = webdriver.ChromeOptions()
     # Comente '--headless=new' para assistir o navegador na tela
-    options.add_argument("--headless=new")
+    # options.add_argument("--headless=new")
     options.add_argument("--window-size=430,920")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -63,7 +63,7 @@ def fazer_login(driver, email, senha):
         email,
         senha,
     )
-    time.sleep(0.4)
+    time.sleep(PAUSA_ENTRE_ACOES)
 
 
 def aguardar_alerta(driver, timeout=5):
@@ -91,6 +91,7 @@ def definir_valor(driver, element_id, valor):
         element_id,
         valor,
     )
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
 
 
 def faltas_acumuladas(driver):
@@ -111,7 +112,8 @@ def abrir_disciplina_sdes06(driver):
     card = WebDriverWait(driver, 5).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-disciplina-codigo='SDES06']"))
     )
-    clicar(driver, card)
+    driver.execute_script("arguments[0].click();", card)
+    time.sleep(PAUSA_ENTRE_ACOES)
     WebDriverWait(driver, 5).until(
         EC.visibility_of_element_located((By.ID, "view-disciplina-detalhe"))
     )
@@ -128,7 +130,7 @@ def abrir_tela_avaliacoes(driver):
         WebDriverWait(driver, 5).until(
             EC.visibility_of_element_located((By.ID, "view-aluno-avaliacoes"))
         )
-        time.sleep(0.5)
+        time.sleep(PAUSA_ENTRE_ACOES)
 
 
 def selecionar_por_texto_parcial(driver, select_id, texto_parcial):
@@ -146,6 +148,7 @@ def selecionar_por_texto_parcial(driver, select_id, texto_parcial):
         select_id,
         texto_parcial,
     )
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
 
 
 def card_falta_por_texto(driver, texto):
@@ -178,6 +181,7 @@ def test_CT18_registrar_falta_no_historico(driver):
     definir_valor(driver, "falta-data", (date.today() - timedelta(days=3)).isoformat())
     definir_valor(driver, "falta-horas", "2")
     driver.execute_script("document.getElementById('falta-justificativa').value = 'Consulta medica';")
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
     driver.execute_script("salvarFalta(new Event('submit'));")
 
     alerta = aguardar_alerta(driver)
@@ -224,6 +228,7 @@ def test_CT20_alterar_registro_de_falta(driver):
 
     definir_valor(driver, "falta-horas", "1")
     driver.execute_script("document.getElementById('falta-justificativa').value = 'Consulta medica remarcada';")
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
     driver.execute_script("salvarFalta(new Event('submit'));")
 
     alerta = aguardar_alerta(driver)
@@ -262,6 +267,7 @@ def test_CT22_cadastrar_avaliacao(driver):
     selecionar_por_texto_parcial(driver, "avaliacao-tipo", "Seminário")
     definir_valor(driver, "avaliacao-data", DATA_SEMINARIO)
     driver.execute_script("document.getElementById('avaliacao-titulo').value = 'Seminario de Riscos';")
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
     definir_valor(driver, "avaliacao-peso", "15")
     driver.execute_script("salvarAvaliacao(new Event('submit'));")
 
@@ -314,7 +320,7 @@ def test_CT24_consultar_avaliacoes_com_filtros(driver):
     # Filtro por tipo: Prova
     selecionar_por_texto_parcial(driver, "filtro-aval-tipo", "Prova")
     driver.execute_script("consultarAvaliacoes();")
-    time.sleep(0.4)
+    time.sleep(PAUSA_ENTRE_ACOES)
 
     proximas = driver.find_element(By.ID, "lista-avaliacoes-proximas").text
     passadas = driver.find_element(By.ID, "lista-avaliacoes-passadas").text
@@ -327,7 +333,7 @@ def test_CT24_consultar_avaliacoes_com_filtros(driver):
     selecionar_por_texto_parcial(driver, "filtro-aval-tipo", "TODOS")
     selecionar_por_texto_parcial(driver, "filtro-aval-disciplina", "COM210")
     driver.execute_script("consultarAvaliacoes();")
-    time.sleep(0.4)
+    time.sleep(PAUSA_ENTRE_ACOES)
 
     proximas = driver.find_element(By.ID, "lista-avaliacoes-proximas").text
     assert "Prova 2" in proximas
@@ -336,7 +342,7 @@ def test_CT24_consultar_avaliacoes_com_filtros(driver):
     # Restaura os filtros
     selecionar_por_texto_parcial(driver, "filtro-aval-disciplina", "TODOS")
     driver.execute_script("consultarAvaliacoes();")
-    time.sleep(0.4)
+    time.sleep(PAUSA_ENTRE_ACOES)
     assert "Seminario de Riscos" in driver.find_element(By.ID, "lista-avaliacoes-proximas").text
 
 
@@ -355,6 +361,7 @@ def test_CT25_alterar_e_excluir_avaliacao(driver):
     assert not driver.find_element(By.ID, "avaliacao-disciplina").is_enabled()
 
     driver.execute_script("document.getElementById('avaliacao-titulo').value = 'Seminario de Gestao de Riscos';")
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
     definir_valor(driver, "avaliacao-nota", "9")
     driver.execute_script("salvarAvaliacao(new Event('submit'));")
 

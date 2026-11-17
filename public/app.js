@@ -254,6 +254,31 @@ async function atualizarDadosProgressoAluno() {
       selDisp.innerHTML += `<option value="${d.id}">${d.codigo} - ${d.nome} (${d.semestre_ideal}º sem.)</option>`;
     });
   }
+
+  // Atualiza o select de disciplinas para lançar como Concluída no Histórico (CRUD 07)
+  const selHist = document.getElementById('hist-grade-disciplina');
+  if (selHist && !selHist.disabled) {
+    selHist.innerHTML = '<option value="">Selecione a disciplina...</option>';
+    const disponiveisHist = [...(progressoAlunoCache.faltam || []), ...(progressoAlunoCache.fazendo || [])];
+    disponiveisHist.forEach((d) => {
+      const discId = d.disciplina_id || d.id;
+      selHist.innerHTML += `<option value="${discId}">${d.codigo} - ${d.nome} (${d.semestre_ideal}º sem.)</option>`;
+    });
+  }
+}
+
+function preencherPadroesTurmaPeloSelect() {
+  const discId = Number(document.getElementById('select-disc-disponivel').value);
+  const disc = (progressoAlunoCache.faltam || []).find((d) => d.id === discId);
+  if (!disc) return;
+  const elCod = document.getElementById('turma-add-codigo');
+  const elDoc = document.getElementById('turma-add-docente');
+  const elSala = document.getElementById('turma-add-sala');
+  const elHor = document.getElementById('turma-add-horarios');
+  if (elCod) elCod.value = 'T01';
+  if (elDoc) elDoc.value = disc.docente || '';
+  if (elSala) elSala.value = disc.sala || '';
+  if (elHor) elHor.value = disc.horarios || '';
 }
 
 async function carregarTelaInicialAluno() {
@@ -278,22 +303,32 @@ async function adicionarDisciplinaNoSemestrePeloSelect(event) {
   const discId = document.getElementById('select-disc-disponivel').value;
   if (!discId) return;
 
-  await adicionarDisciplinaAoSemestre(Number(discId));
-  document.getElementById('box-add-disciplina-semestre').classList.add('hidden');
+  const extras = {
+    turma_codigo: document.getElementById('turma-add-codigo') ? document.getElementById('turma-add-codigo').value : 'T01',
+    docente: document.getElementById('turma-add-docente') ? document.getElementById('turma-add-docente').value : undefined,
+    sala: document.getElementById('turma-add-sala') ? document.getElementById('turma-add-sala').value : undefined,
+    horarios: document.getElementById('turma-add-horarios') ? document.getElementById('turma-add-horarios').value : undefined,
+    validar_choque: true
+  };
+
+  const ok = await adicionarDisciplinaAoSemestre(Number(discId), false, extras);
+  if (ok) {
+    document.getElementById('box-add-disciplina-semestre').classList.add('hidden');
+  }
 }
 
-async function adicionarDisciplinaAoSemestre(disciplinaId, permanecerNaGrade = false) {
+async function adicionarDisciplinaAoSemestre(disciplinaId, permanecerNaGrade = false, extras = {}) {
   limparMensagem();
   const resp = await fetch('/api/turmas', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ usuario_id: usuarioLogado.id, disciplina_id: disciplinaId })
+    body: JSON.stringify({ usuario_id: usuarioLogado.id, disciplina_id: disciplinaId, ...extras })
   });
   const dados = await resp.json();
 
   if (!resp.ok) {
     exibirMensagem(dados.erro || 'Não foi possível adicionar a disciplina.', 'error');
-    return;
+    return false;
   }
 
   await atualizarDadosProgressoAluno();
@@ -304,35 +339,48 @@ async function adicionarDisciplinaAoSemestre(disciplinaId, permanecerNaGrade = f
     renderizarGradeHorarios('grade-horarios-geral', turmasAlunoCache, true);
   }
   exibirMensagem(dados.mensagem, 'success');
+  return true;
 }
 
-function renderizarListaDisciplinasAluno() {
+async function filtrarTurmasSemestreAluno() {
+  if (!usuarioLogado) return;
+  const busca = document.getElementById('filtro-turma-busca') ? document.getElementById('filtro-turma-busca').value : '';
+  const dia = document.getElementById('filtro-turma-dia') ? document.getElementById('filtro-turma-dia').value : 'TODOS';
+  const params = new URLSearchParams({ usuario_id: usuarioLogado.id, busca, dia });
+  const resp = await fetch(`/api/turmas?${params.toString()}`);
+  const filtradas = await resp.json();
+  renderizarListaDisciplinasAluno(filtradas);
+}
+
+function renderizarListaDisciplinasAluno(listaOpcional = null) {
   const container = document.getElementById('lista-disciplinas-aluno');
   container.innerHTML = '';
+  const lista = Array.isArray(listaOpcional) ? listaOpcional : turmasAlunoCache;
 
-  if (turmasAlunoCache.length === 0) {
+  if (lista.length === 0) {
     container.innerHTML = `
       <div class="mobile-card" style="text-align: center; color: #64748b;">
-        Nenhuma disciplina ativa neste semestre. Toque em "+ Adicionar" para puxar matérias da sua grade.
+        Nenhuma disciplina encontrada neste semestre.
       </div>
     `;
     return;
   }
 
-  turmasAlunoCache.forEach((t) => {
+  lista.forEach((t) => {
     const maxFaltas = Math.floor(t.ch_total * 0.25);
     const alertaFalta = t.faltas_horas >= maxFaltas * 0.75 ? 'alerta' : '';
     const resumoHorario = formatarResumoHorarios(t.horarios);
+    const codTurma = t.turma_codigo || 'T01';
 
     container.innerHTML += `
       <article class="disc-card" data-disciplina-codigo="${t.codigo}" style="border-left-color: ${t.cor}" onclick="abrirDetalheDisciplina(${t.id})">
         <div class="disc-card-main">
           <div class="disc-card-top">
-            <span class="disc-code" style="color: ${t.cor}; background: ${t.cor}15;">${t.codigo}</span>
+            <span class="disc-code" style="color: ${t.cor}; background: ${t.cor}15;">${t.codigo} (${codTurma})</span>
             <span class="disc-room">${t.sala}</span>
           </div>
           <span class="disc-name">${t.nome}</span>
-          <span class="disc-schedule-summary">${resumoHorario}</span>
+          <span class="disc-schedule-summary">${t.docente} &bull; ${resumoHorario}</span>
         </div>
         <div class="disc-card-right">
           <span class="disc-faltas-pill ${alertaFalta}">${t.faltas_horas}h faltas</span>
@@ -424,6 +472,9 @@ function atualizarDadosTelaDisciplina(turma) {
   pillCod.textContent = turma.codigo;
   pillCod.style.backgroundColor = turma.cor;
 
+  const pillTurma = document.getElementById('detalhe-turma-codigo');
+  if (pillTurma) pillTurma.textContent = `Turma ${turma.turma_codigo || 'T01'}`;
+
   document.getElementById('detalhe-ch').textContent = `${turma.ch_total}h`;
   document.getElementById('detalhe-nome').textContent = turma.nome;
   document.getElementById('detalhe-horarios-texto').textContent = formatarResumoHorarios(turma.horarios);
@@ -441,8 +492,66 @@ function atualizarDadosTelaDisciplina(turma) {
   barra.style.width = `${percentual}%`;
   barra.style.backgroundColor = percentual >= 80 ? '#dc2626' : turma.cor;
 
+  fecharFormEdicaoTurma();
   renderizarGradeHorarios('grade-horarios-individual', [turma], false);
   carregarHistoricoFaltas(turma.id);
+}
+
+// ============================================================================
+// CRUD 08 — EDIÇÃO DE TURMA DO SEMESTRE E VALIDAÇÃO DE CHOQUE DE HORÁRIOS (RFS23)
+// ============================================================================
+function prepararEdicaoTurmaAtual() {
+  if (!disciplinaSelecionada) return;
+  limparMensagem();
+  document.getElementById('edit-turma-disciplina').value = `${disciplinaSelecionada.codigo} — ${disciplinaSelecionada.nome}`;
+  document.getElementById('edit-turma-disciplina').disabled = true;
+  document.getElementById('edit-turma-codigo').value = disciplinaSelecionada.turma_codigo || 'T01';
+  document.getElementById('edit-turma-docente').value = disciplinaSelecionada.docente || '';
+  document.getElementById('edit-turma-sala').value = disciplinaSelecionada.sala || '';
+  document.getElementById('edit-turma-horarios').value = disciplinaSelecionada.horarios || '';
+
+  const card = document.getElementById('card-form-editar-turma');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'center' });
+}
+
+function fecharFormEdicaoTurma() {
+  const card = document.getElementById('card-form-editar-turma');
+  if (card) card.classList.add('hidden');
+}
+
+async function salvarEdicaoTurmaAtual(event) {
+  event.preventDefault();
+  if (!disciplinaSelecionada) return;
+  limparMensagem();
+
+  const payload = {
+    turma_codigo: document.getElementById('edit-turma-codigo').value.trim().toUpperCase(),
+    docente: document.getElementById('edit-turma-docente').value.trim(),
+    sala: document.getElementById('edit-turma-sala').value.trim(),
+    horarios: document.getElementById('edit-turma-horarios').value.trim().toUpperCase()
+  };
+
+  const resp = await fetch(`/api/turmas/${disciplinaSelecionada.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível atualizar os dados da turma.', 'error');
+    return;
+  }
+
+  disciplinaSelecionada = dados.turma;
+  const idx = turmasAlunoCache.findIndex((t) => t.id === disciplinaSelecionada.id);
+  if (idx !== -1) turmasAlunoCache[idx] = disciplinaSelecionada;
+
+  atualizarDadosTelaDisciplina(disciplinaSelecionada);
+  renderizarListaDisciplinasAluno();
+  renderizarGradeHorarios('grade-horarios-geral', turmasAlunoCache, true);
+  exibirMensagem(dados.mensagem, 'success');
 }
 
 async function alterarFaltaDisciplinaAtual(delta) {
@@ -561,6 +670,20 @@ function renderizarTelaProgressoAluno() {
     document.getElementById('ch-complementar-texto').textContent = `* Atividades complementares exigidas para colação: ${ch.complementar_exigida}h.`;
   }
 
+  const filtroPeriodo = document.getElementById('filtro-grade-aluno-periodo')
+    ? document.getElementById('filtro-grade-aluno-periodo').value
+    : 'TODOS';
+  const filtroTipo = document.getElementById('filtro-grade-aluno-tipo')
+    ? document.getElementById('filtro-grade-aluno-tipo').value
+    : 'TODOS';
+
+  const aplicarFiltrosGrade = (lista) =>
+    (lista || []).filter((item) => {
+      if (filtroPeriodo !== 'TODOS' && Number(item.semestre_ideal) !== Number(filtroPeriodo)) return false;
+      if (filtroTipo !== 'TODOS' && item.tipo !== filtroTipo) return false;
+      return true;
+    });
+
   const renderPrereqsInfo = (prereqs) => {
     if (!prereqs || prereqs.length === 0) return '';
     const pills = prereqs
@@ -574,7 +697,7 @@ function renderizarTelaProgressoAluno() {
 
   const boxFazendo = document.getElementById('lista-progresso-fazendo');
   boxFazendo.innerHTML = '';
-  (fazendo || []).forEach((t) => {
+  aplicarFiltrosGrade(fazendo).forEach((t) => {
     const badgeTipo = t.tipo === 'Optativa' ? '<span class="badge-optativa">Optativa</span>' : '<span class="badge-obrigatoria">Obrigatória</span>';
     boxFazendo.innerHTML += `
       <article class="item-card" data-progresso-codigo="${t.codigo}">
@@ -601,7 +724,7 @@ function renderizarTelaProgressoAluno() {
   const boxFaltam = document.getElementById('lista-progresso-faltam');
   boxFaltam.innerHTML = '';
   let periodoAtualFaltam = null;
-  (faltam || []).forEach((d) => {
+  aplicarFiltrosGrade(faltam).forEach((d) => {
     const sem = d.semestre_ideal || 0;
     if (sem !== periodoAtualFaltam) {
       periodoAtualFaltam = sem;
@@ -636,7 +759,7 @@ function renderizarTelaProgressoAluno() {
   const boxFinalizadas = document.getElementById('lista-progresso-finalizadas');
   boxFinalizadas.innerHTML = '';
   let periodoAtualFinalizadas = null;
-  (finalizadas || []).forEach((f) => {
+  aplicarFiltrosGrade(finalizadas).forEach((f) => {
     const sem = f.semestre_ideal || 0;
     if (sem !== periodoAtualFinalizadas) {
       periodoAtualFinalizadas = sem;
@@ -644,23 +767,139 @@ function renderizarTelaProgressoAluno() {
       boxFinalizadas.innerHTML += `<div class="periodo-header">${labelPeriodo}</div>`;
     }
     const badgeTipo = f.tipo === 'Optativa' ? '<span class="badge-optativa">Optativa</span>' : '<span class="badge-obrigatoria">Obrigatória</span>';
+    const badgeSituacao = f.situacao === 'Dispensada'
+      ? '<span class="badge badge-done">Dispensada</span>'
+      : '<span class="badge badge-done">Finalizada</span>';
+    const infoNota = f.nota_final !== null && f.nota_final !== undefined
+      ? ` &bull; <strong>Nota Final:</strong> ${Number(f.nota_final).toFixed(1)}`
+      : '';
+    const infoSemestre = f.semestre_cursado
+      ? ` &bull; <strong>Cursada em:</strong> ${escaparHtml(f.semestre_cursado)}`
+      : '';
 
     boxFinalizadas.innerHTML += `
-      <article class="item-card" data-progresso-codigo="${f.codigo}">
+      <article class="item-card" data-progresso-codigo="${f.codigo}" data-historico-id="${f.id}">
         <div class="item-card-header">
           <span class="item-title">${f.codigo} — ${f.nome}</span>
           <div style="display:flex; gap:0.3rem; align-items:center;">
             ${badgeTipo}
-            <span class="badge badge-done">Finalizada</span>
+            ${badgeSituacao}
           </div>
         </div>
         <div class="item-meta">
-          <span><strong>Carga horária cumprida:</strong> ${f.ch_total}h</span>
+          <span><strong>Carga horária cumprida:</strong> ${f.ch_total}h${infoSemestre}${infoNota}</span>
           ${renderPrereqsInfo(f.prerequisitos)}
+        </div>
+        <div class="item-actions">
+          <button type="button" class="btn btn-secondary btn-editar-historico" onclick="prepararEdicaoHistoricoGrade(${f.id})">Editar Histórico</button>
+          <button type="button" class="btn btn-danger btn-remover-historico" onclick="removerHistoricoGrade(${f.id})">Voltar p/ Pendente</button>
         </div>
       </article>
     `;
   });
+}
+
+// ============================================================================
+// CRUD 07 — MANUTENÇÃO DO HISTÓRICO / GRADE DO ALUNO (RFS17 a RFS20)
+// ============================================================================
+function prepararNovoHistoricoGrade() {
+  limparMensagem();
+  document.getElementById('form-historico-grade').reset();
+  document.getElementById('hist-grade-id').value = '';
+  document.getElementById('titulo-form-historico-grade').textContent = 'Registrar Disciplina Concluída';
+  const selDisc = document.getElementById('hist-grade-disciplina');
+  selDisc.disabled = false;
+  selDisc.innerHTML = '<option value="">Selecione a disciplina...</option>';
+  const disponiveisHist = [...(progressoAlunoCache.faltam || []), ...(progressoAlunoCache.fazendo || [])];
+  disponiveisHist.forEach((d) => {
+    const discId = d.disciplina_id || d.id;
+    selDisc.innerHTML += `<option value="${discId}">${d.codigo} - ${d.nome} (${d.semestre_ideal}º sem.)</option>`;
+  });
+  document.getElementById('hist-grade-situacao').value = 'Finalizada';
+  document.getElementById('hist-grade-semestre').value = '2025.2';
+  document.getElementById('hist-grade-nota').value = '';
+
+  const card = document.getElementById('card-form-historico-grade');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+function fecharFormHistoricoGrade() {
+  const card = document.getElementById('card-form-historico-grade');
+  if (card) card.classList.add('hidden');
+}
+
+function prepararEdicaoHistoricoGrade(id) {
+  limparMensagem();
+  const item = (progressoAlunoCache.finalizadas || []).find((f) => f.id === Number(id));
+  if (!item) return;
+
+  document.getElementById('titulo-form-historico-grade').textContent = `Editar Histórico (${item.codigo})`;
+  document.getElementById('hist-grade-id').value = item.id;
+  const selDisc = document.getElementById('hist-grade-disciplina');
+  selDisc.innerHTML = `<option value="${item.disciplina_id || item.id}">${item.codigo} - ${item.nome}</option>`;
+  selDisc.value = item.disciplina_id || item.id;
+  selDisc.disabled = true;
+
+  document.getElementById('hist-grade-situacao').value = item.situacao === 'Dispensada' ? 'Dispensada' : 'Finalizada';
+  document.getElementById('hist-grade-semestre').value = item.semestre_cursado || '2025.1';
+  document.getElementById('hist-grade-nota').value = item.nota_final !== null && item.nota_final !== undefined ? item.nota_final : '';
+
+  const card = document.getElementById('card-form-historico-grade');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+async function salvarHistoricoGrade(event) {
+  event.preventDefault();
+  limparMensagem();
+
+  const id = document.getElementById('hist-grade-id').value;
+  const payload = {
+    usuario_id: usuarioLogado.id,
+    disciplina_id: Number(document.getElementById('hist-grade-disciplina').value),
+    situacao: document.getElementById('hist-grade-situacao').value,
+    semestre_cursado: document.getElementById('hist-grade-semestre').value.trim(),
+    nota_final: document.getElementById('hist-grade-nota').value
+  };
+
+  const url = id ? `/api/aluno/grade/${id}` : '/api/aluno/grade';
+  const metodo = id ? 'PUT' : 'POST';
+
+  const resp = await fetch(url, {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível salvar no histórico.', 'error');
+    return;
+  }
+
+  fecharFormHistoricoGrade();
+  await atualizarDadosProgressoAluno();
+  renderizarTelaProgressoAluno();
+  exibirMensagem(dados.mensagem, 'success');
+}
+
+async function removerHistoricoGrade(id) {
+  limparMensagem();
+  const item = (progressoAlunoCache.finalizadas || []).find((f) => f.id === Number(id));
+  if (!window.confirm(`Deseja remover o registro de conclusão de ${item ? item.codigo : ''} e retorná-la para Pendente?`)) return;
+
+  const resp = await fetch(`/api/aluno/grade/${id}`, { method: 'DELETE' });
+  const dados = await resp.json();
+
+  if (!resp.ok) {
+    exibirMensagem(dados.erro || 'Não foi possível remover o registro do histórico.', 'error');
+    return;
+  }
+
+  await atualizarDadosProgressoAluno();
+  renderizarTelaProgressoAluno();
+  exibirMensagem(dados.mensagem, 'success');
 }
 
 async function finalizarDisciplinaPeloProgresso(turmaId) {

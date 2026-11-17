@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>MantisBT — Desenrola Aluno (Release 03)</title>
+  <title>MantisBT — Desenrola Aluno (Release 04 — Entrega Final)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Open Sans', 'Segoe UI', Tahoma, sans-serif; }
     body { background-color: #f2f2f2; color: #393939; font-size: 13px; }
@@ -30,22 +30,22 @@
 <body>
   <div class="navbar">
     <div class="navbar-brand">MantisBT — Bug Tracker | Projeto: Desenrola Aluno (UNIFEI)</div>
-    <div class="navbar-user">Usuário: <strong>Gabriel Barbosa (Líder de QA / Gerente de Configuração)</strong> | Projeto: <strong>PRJ-DESENROLA-2026 (Release 03)</strong></div>
+    <div class="navbar-user">Usuário: <strong>Gabriel Barbosa (Líder de QA / Gerente de Configuração)</strong> | Projeto: <strong>PRJ-DESENROLA-2026 (Release 04 — 8 CRUDs)</strong></div>
   </div>
   <div class="subbar">
-    <div>Visão de Problemas (Viewing Issues) — Filtro Ativo: <strong>Versão Alvo = BASELINE_R03 (1 - 15 / 15)</strong></div>
-    <div>Status da Suite Selenium Mobile: <strong>25 / 25 Casos de Teste Aprovados (R01 + R02 + R03)</strong></div>
+    <div>Visão de Problemas (Viewing Issues) — Filtro Ativo: <strong>Versão Alvo = BASELINE_R04 (1 - 20 / 20)</strong></div>
+    <div>Status da Suite Selenium Mobile: <strong>33 / 33 Casos de Teste Aprovados (R01 + R02 + R03 + R04)</strong></div>
   </div>
 
   <div class="container">
     <div class="summary-cards">
       <div class="stat-card">
-        <h4>Total de Issues Acumulados (R01 a R03)</h4>
-        <div class="num">15</div>
+        <h4>Total de Issues Acumulados (R01 a R04)</h4>
+        <div class="num">20</div>
       </div>
       <div class="stat-card" style="border-left-color: #87b87f;">
         <h4>Fechados / Resolvidos</h4>
-        <div class="num" style="color: #468847;">15 (100%)</div>
+        <div class="num" style="color: #468847;">20 (100%)</div>
       </div>
       <div class="stat-card" style="border-left-color: #d15b47;">
         <h4>Abertos / Pendentes</h4>
@@ -53,14 +53,14 @@
       </div>
       <div class="stat-card" style="border-left-color: #f89406;">
         <h4>Cobertura de Reteste (Selenium)</h4>
-        <div class="num" style="color: #c67605;">25 / 25 CTs (100%)</div>
+        <div class="num" style="color: #c67605;">33 / 33 CTs (100%)</div>
       </div>
     </div>
 
     <div class="widget-box">
       <div class="widget-header">
-        <span>Problemas Registrados na Release 03 (MantisBT Issues #0000111 a #0000115)</span>
-        <span>Baseline Associada: BASELINE_R03</span>
+        <span>Problemas Registrados na Release 04 — CRUDs 07 e 08 (MantisBT Issues #0000116 a #0000120)</span>
+        <span>Baseline Associada: BASELINE_R04</span>
       </div>
       <table>
         <thead>
@@ -77,68 +77,68 @@
         </thead>
         <tbody>
           <tr>
-            <td><span class="issue-id">0000111</span></td>
-            <td>Histórico de Frequência e Faltas<br><small>RF08 / CT19</small></td>
+            <td><span class="issue-id">0000116</span></td>
+            <td>Histórico e Grade do Aluno<br><small>RFS17 / RN03 / CT27</small></td>
             <td><span class="sev-major">Maior (Major)</span></td>
             <td>Alta</td>
             <td><span class="status-closed">fechado (corrigido)</span></td>
             <td>Lucas Margelo</td>
-            <td>04/02/2027</td>
+            <td>22/02/2027</td>
             <td>
-              <strong>Registro de falta aceitava data futura no histórico de frequência da disciplina</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Adicionada trava <code>data &gt; hojeISO()</code> em <code>validarRegistroFalta()</code> no backend e atributo <code>max</code> no input de data. Validado pelo <code>CT19</code> no Selenium.</small>
+              <strong>Lançamento de disciplina concluída (Aprovado) no histórico aceitava nota final inferior a 6.0 e semestre fora do formato AAAA.1/AAAA.2</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Implementada função <code>validarDadosHistoricoGrade()</code> em <code>server.js</code> exigindo regex <code>/^\d{4}\.[12]$/</code> e nota final entre <code>6.0</code> e <code>10.0</code> para aprovação (<code>RN03</code>). Validado pelo <code>CT27</code> no Selenium.</small>
             </td>
           </tr>
           <tr>
-            <td><span class="issue-id">0000112</span></td>
-            <td>Histórico de Frequência e Faltas<br><small>RF08 / CT20 / CT21</small></td>
+            <td><span class="issue-id">0000117</span></td>
+            <td>Histórico e Grade do Aluno<br><small>RFS19 / RFS20 / CT29</small></td>
             <td><span class="sev-critical">Crítico (Data Loss)</span></td>
             <td>Urgente</td>
             <td><span class="status-closed">fechado (corrigido)</span></td>
             <td>Gabriel Maia</td>
-            <td>08/02/2027</td>
+            <td>25/02/2027</td>
             <td>
-              <strong>Alteração ou exclusão de registro no histórico de faltas não recalculava o saldo acumulado da disciplina</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Atualizados os endpoints <code>PUT /api/faltas/:id</code> e <code>DELETE /api/faltas/:id</code> para recompor <code>faltas_horas</code> em <code>TB_TURMA_ALUNO</code>. Validado pelos <code>CT20</code> e <code>CT21</code>.</small>
+              <strong>Exclusão de disciplina concluída do histórico não subtraía a carga horária cumprida nem retornava a matéria para Pendentes na grade</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Ajustada rota <code>DELETE /api/aluno/grade/:id</code> e recarga automática de <code>atualizarDadosProgressoAluno()</code> para recompor as barras de CH obrigatória/optativa e recolocar a disciplina em <em>Ainda faltam</em>. Validado pelo <code>CT29</code>.</small>
             </td>
           </tr>
           <tr>
-            <td><span class="issue-id">0000113</span></td>
-            <td>Calendário de Avaliações<br><small>RF09 / CT23</small></td>
+            <td><span class="issue-id">0000118</span></td>
+            <td>Matrículas e Turmas do Semestre<br><small>RFS21 / RN01 / CT31</small></td>
+            <td><span class="sev-critical">Crítico (Crash/Conflict)</span></td>
+            <td>Urgente</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>28/02/2027</td>
+            <td>
+              <strong>Matrícula de turma no semestre não impedia choque de horário com outra disciplina já cursada no mesmo dia e slot da UNIFEI</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Criada função <code>verificarChoqueDeHorario()</code> em <code>server.js</code> comparando os slots <code>DIA-TURNO</code> da nova turma com todas as turmas <code>Cursando</code> do discente (<code>RN01</code>). Validado pelo <code>CT31</code> no Selenium.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000119</span></td>
+            <td>Matrículas e Turmas do Semestre<br><small>RFS23 / RN01 / CT33</small></td>
             <td><span class="sev-major">Maior (Major)</span></td>
             <td>Alta</td>
             <td><span class="status-closed">fechado (corrigido)</span></td>
-            <td>Lucas Margelo</td>
-            <td>12/02/2027</td>
+            <td>Gabriel Maia</td>
+            <td>04/03/2027</td>
             <td>
-              <strong>Sistema permitia cadastrar avaliação duplicada (mesmo título, data e disciplina) para o aluno</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Implementada verificação de unicidade <code>LOWER(titulo) + data + turma_id</code> no cadastro e edição de avaliações. Validado pelo <code>CT23</code> no Selenium.</small>
+              <strong>Alteração de horários de uma turma matriculada não validava conflito com as demais turmas ativas e não atualizava o quadro semanal</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Adicionada validação <code>verificarChoqueDeHorario(usuario_id, horarios, atual.id)</code> em <code>PUT /api/turmas/:id</code> e re-renderização imediata de <code>grade-horarios-geral</code> em <code>salvarEdicaoTurmaAtual()</code>. Validado pelo <code>CT33</code>.</small>
             </td>
           </tr>
           <tr>
-            <td><span class="issue-id">0000114</span></td>
-            <td>Calendário de Avaliações<br><small>RF09 / CT23</small></td>
+            <td><span class="issue-id">0000120</span></td>
+            <td>Matrículas e Turmas do Semestre<br><small>RFS22 / CT32</small></td>
             <td>Médio (Minor)</td>
             <td>Normal</td>
-            <td><span class="status-closed">fechado (corrigido)</span></td>
-            <td>Gabriel Maia</td>
-            <td>15/02/2027</td>
-            <td>
-              <strong>Formulário de avaliação aceitava lançamento de nota fora da faixa de 0 a 10 e título com menos de 3 caracteres</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Adicionadas críticas de tamanho do título (3 a 80 caracteres) e faixa de nota (0 a 10) em <code>validarAvaliacao()</code>. Validado pelo <code>CT23</code>.</small>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="issue-id">0000115</span></td>
-            <td>Calendário de Avaliações<br><small>RF09 / CT25</small></td>
-            <td>Médio (Minor)</td>
-            <td>Alta</td>
             <td><span class="status-resolved">resolvido (corrigido)</span></td>
             <td>Leonardo Marinho</td>
-            <td>17/02/2027</td>
+            <td>06/03/2027</td>
             <td>
-              <strong>Ao editar avaliação com campo de disciplina desabilitado no mobile, o envio retornava erro 400 (disciplina vazia)</strong><br>
-              <small style="color:#555;"><em>Solução:</em> Incluído fallback para recuperar <code>turma_id</code> do cache da avaliação em edição em <code>salvarAvaliacao()</code> (<code>app.js</code>). Validado pelo <code>CT25</code> no Selenium.</small>
+              <strong>Filtro combinado por dia da semana e busca textual em Meu Semestre diferenciava maiúsculas/minúsculas nos códigos de slot</strong><br>
+              <small style="color:#555;"><em>Solução:</em> Padronizada consulta SQL em <code>GET /api/turmas</code> com <code>LOWER()</code> para código/nome/docente e <code>UPPER(horarios) LIKE UPPER(?)</code> para o dia da semana. Validado pelo <code>CT32</code> no Selenium.</small>
             </td>
           </tr>
         </tbody>
@@ -147,8 +147,8 @@
 
     <div class="widget-box">
       <div class="widget-header">
-        <span>Histórico Consolidado — Releases 01 e 02 (Issues #0000101 a #0000110)</span>
-        <span>Baselines: BASELINE_R01 &amp; BASELINE_R02</span>
+        <span>Histórico Consolidado — Releases 01, 02 e 03 (Issues #0000101 a #0000115)</span>
+        <span>Baselines: BASELINE_R01, BASELINE_R02 &amp; BASELINE_R03</span>
       </div>
       <table>
         <thead>
@@ -263,6 +263,56 @@
             <td>Leonardo Marinho</td>
             <td>20/01/2027</td>
             <td>Tag de indicador de pré-requisito não diferenciava visualmente matéria cumprida de matéria pendente.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000111</span></td>
+            <td>Histórico de Frequência e Faltas (RF08 / CT19)</td>
+            <td><span class="sev-major">Maior (Major)</span></td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>04/02/2027</td>
+            <td>Registro de falta aceitava data futura no histórico de frequência da disciplina.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000112</span></td>
+            <td>Histórico de Frequência e Faltas (RF08 / CT20 / CT21)</td>
+            <td><span class="sev-critical">Crítico (Data Loss)</span></td>
+            <td>Urgente</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Gabriel Maia</td>
+            <td>08/02/2027</td>
+            <td>Alteração ou exclusão de registro no histórico de faltas não recalculava o saldo acumulado da disciplina.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000113</span></td>
+            <td>Calendário de Avaliações (RF09 / CT23)</td>
+            <td><span class="sev-major">Maior (Major)</span></td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Lucas Margelo</td>
+            <td>12/02/2027</td>
+            <td>Sistema permitia cadastrar avaliação duplicada (mesmo título, data e disciplina) para o aluno.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000114</span></td>
+            <td>Calendário de Avaliações (RF09 / CT23)</td>
+            <td>Médio (Minor)</td>
+            <td>Normal</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Gabriel Maia</td>
+            <td>15/02/2027</td>
+            <td>Formulário de avaliação aceitava lançamento de nota fora da faixa de 0 a 10 e título com menos de 3 caracteres.</td>
+          </tr>
+          <tr>
+            <td><span class="issue-id">0000115</span></td>
+            <td>Calendário de Avaliações (RF09 / CT25)</td>
+            <td>Médio (Minor)</td>
+            <td>Alta</td>
+            <td><span class="status-closed">fechado (corrigido)</span></td>
+            <td>Leonardo Marinho</td>
+            <td>17/02/2027</td>
+            <td>Ao editar avaliação com campo de disciplina desabilitado no mobile, o envio retornava erro 400 (disciplina vazia).</td>
           </tr>
         </tbody>
       </table>

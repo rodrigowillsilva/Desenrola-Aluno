@@ -1021,6 +1021,54 @@ app.delete('/api/disciplinas/:id', disciplinaController.remover);
 // ============================================================================
 // DISCIPLINAS, HORÁRIOS E PROGRESSO DO ALUNO (turmaAlunoController)
 // ============================================================================
+const SLOTS_HORARIOS_VALIDOS = new Set([
+  'SEG-M1', 'SEG-M2', 'SEG-M3', 'SEG-M4', 'SEG-M5',
+  'SEG-T1', 'SEG-T2', 'SEG-T3', 'SEG-T4', 'SEG-T5',
+  'SEG-N1', 'SEG-N2', 'SEG-N3', 'SEG-N4',
+  'TER-M1', 'TER-M2', 'TER-M3', 'TER-M4', 'TER-M5',
+  'TER-T1', 'TER-T2', 'TER-T3', 'TER-T4', 'TER-T5',
+  'TER-N1', 'TER-N2', 'TER-N3', 'TER-N4',
+  'QUA-M1', 'QUA-M2', 'QUA-M3', 'QUA-M4', 'QUA-M5',
+  'QUA-T1', 'QUA-T2', 'QUA-T3', 'QUA-T4', 'QUA-T5',
+  'QUA-N1', 'QUA-N2', 'QUA-N3', 'QUA-N4',
+  'QUI-M1', 'QUI-M2', 'QUI-M3', 'QUI-M4', 'QUI-M5',
+  'QUI-T1', 'QUI-T2', 'QUI-T3', 'QUI-T4', 'QUI-T5',
+  'QUI-N1', 'QUI-N2', 'QUI-N3', 'QUI-N4',
+  'SEX-M1', 'SEX-M2', 'SEX-M3', 'SEX-M4', 'SEX-M5',
+  'SEX-T1', 'SEX-T2', 'SEX-T3', 'SEX-T4', 'SEX-T5',
+  'SEX-N1', 'SEX-N2', 'SEX-N3', 'SEX-N4',
+  'SAB-M1', 'SAB-M2', 'SAB-M3', 'SAB-M4', 'SAB-M5'
+]);
+
+function extrairSlotsHorarios(horariosStr) {
+  return String(horariosStr || '')
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+async function verificarChoqueDeHorario(usuarioId, horariosStr, ignorarTurmaId = null) {
+  const novosSlots = extrairSlotsHorarios(horariosStr);
+  for (const s of novosSlots) {
+    if (!SLOTS_HORARIOS_VALIDOS.has(s)) {
+      return `O horário "${s}" é inválido. Use o padrão DIA-SLOT (ex: SEG-M1, QUA-T3).`;
+    }
+  }
+  const turmasAtivas = await all(
+    `SELECT * FROM TB_TURMA_ALUNO WHERE usuario_id = ? AND situacao = 'Cursando'`,
+    [usuarioId]
+  );
+  for (const t of turmasAtivas) {
+    if (ignorarTurmaId && Number(t.id) === Number(ignorarTurmaId)) continue;
+    const slotsOcupados = new Set(extrairSlotsHorarios(t.horarios));
+    const conflitos = novosSlots.filter((s) => slotsOcupados.has(s));
+    if (conflitos.length > 0) {
+      return `Choque de horário detectado com a disciplina ${t.codigo} (${t.nome}) no(s) horário(s): ${conflitos.join(', ')}.`;
+    }
+  }
+  return null;
+}
+
 app.get('/api/turmas', async (req, res) => {
   try {
     const usuarioId = Number(req.query.usuario_id);
@@ -1028,10 +1076,22 @@ app.get('/api/turmas', async (req, res) => {
       return res.status(400).json({ erro: 'Informe o identificador do aluno.' });
     }
     await seedTurmasAluno(usuarioId);
-    const turmas = await all(
-      `SELECT * FROM TB_TURMA_ALUNO WHERE usuario_id = ? AND situacao = 'Cursando' ORDER BY codigo ASC`,
-      [usuarioId]
-    );
+    const { busca, dia } = req.query;
+    let sql = `SELECT * FROM TB_TURMA_ALUNO WHERE usuario_id = ? AND situacao = 'Cursando'`;
+    const params = [usuarioId];
+
+    if (busca && busca !== 'TODOS') {
+      sql += ` AND (LOWER(codigo) LIKE LOWER(?) OR LOWER(nome) LIKE LOWER(?) OR LOWER(docente) LIKE LOWER(?))`;
+      const term = `%${String(busca).trim()}%`;
+      params.push(term, term, term);
+    }
+    if (dia && dia !== 'TODOS') {
+      sql += ` AND UPPER(horarios) LIKE UPPER(?)`;
+      params.push(`%${String(dia).trim()}-%`);
+    }
+
+    sql += ` ORDER BY codigo ASC`;
+    const turmas = await all(sql, params);
     return res.json(turmas);
   } catch (err) {
     return res.status(500).json({ erro: err.message });
@@ -1054,7 +1114,7 @@ app.get('/api/aluno/progresso', async (req, res) => {
     );
 
     const codigosFinalizados = new Set(
-      turmasAluno.filter((t) => t.situacao === 'Finalizada').map((t) => t.codigo)
+      turmasAluno.filter((t) => t.situacao === 'Finalizada' || t.situacao === 'Dispensada').map((t) => t.codigo)
     );
 
     const enriquecer = (item) => {
@@ -1070,7 +1130,10 @@ app.get('/api/aluno/progresso', async (req, res) => {
     const ordenar = (a, b) => a.semestre_ideal - b.semestre_ideal || a.codigo.localeCompare(b.codigo);
 
     const fazendo = turmasAluno.filter((t) => t.situacao === 'Cursando').map(enriquecer).sort(ordenar);
-    const finalizadas = turmasAluno.filter((t) => t.situacao === 'Finalizada').map(enriquecer).sort(ordenar);
+    const finalizadas = turmasAluno
+      .filter((t) => t.situacao === 'Finalizada' || t.situacao === 'Dispensada')
+      .map(enriquecer)
+      .sort(ordenar);
 
     const codigosVinculados = new Set(turmasAluno.map((t) => t.codigo));
     const faltam = catalogoCurso
@@ -1111,7 +1174,7 @@ app.get('/api/aluno/progresso', async (req, res) => {
 
 app.post('/api/turmas', async (req, res) => {
   try {
-    const { usuario_id, disciplina_id } = req.body;
+    const { usuario_id, disciplina_id, turma_codigo, docente, sala, horarios, validar_choque } = req.body;
     if (!usuario_id || !disciplina_id) {
       return res.status(400).json({ erro: 'Selecione uma disciplina da sua grade para adicionar.' });
     }
@@ -1121,25 +1184,202 @@ app.post('/api/turmas', async (req, res) => {
       return res.status(404).json({ erro: 'Disciplina não encontrada na grade curricular.' });
     }
 
+    const codTurma = turma_codigo ? String(turma_codigo).trim().toUpperCase() : 'T01';
+    if (!/^[A-Z0-9]{2,6}$/.test(codTurma)) {
+      return res.status(400).json({ erro: 'O código da turma deve ter entre 2 e 6 caracteres alfanuméricos (ex: T01, T02).' });
+    }
+    const docFinal = docente ? String(docente).trim() : disc.docente;
+    const salaFinal = sala ? String(sala).trim() : disc.sala;
+    const horFinal = horarios ? String(horarios).trim().toUpperCase() : disc.horarios;
+
+    if (docFinal.length < 3) {
+      return res.status(400).json({ erro: 'Informe o nome do(a) docente da turma (mínimo 3 caracteres).' });
+    }
+    if (salaFinal.length < 2) {
+      return res.status(400).json({ erro: 'Informe o local ou sala de aula da turma.' });
+    }
+
+    const existente = await get(
+      'SELECT * FROM TB_TURMA_ALUNO WHERE usuario_id = ? AND codigo = ?',
+      [usuario_id, disc.codigo]
+    );
+
+    if (existente && existente.situacao === 'Cursando') {
+      return res.status(400).json({ erro: 'Esta disciplina já está na sua grade deste semestre.' });
+    }
+
+    // Validação de choque de horário quando horários customizados ou flag validar_choque são enviados
+    if (validar_choque || horarios) {
+      const erroChoque = await verificarChoqueDeHorario(
+        usuario_id,
+        horFinal,
+        existente ? existente.id : null
+      );
+      if (erroChoque) {
+        return res.status(400).json({ erro: erroChoque });
+      }
+    }
+
+    if (existente) {
+      await run(
+        `UPDATE TB_TURMA_ALUNO
+         SET situacao = 'Cursando', faltas_horas = 0, turma_codigo = ?, docente = ?, sala = ?, horarios = ?
+         WHERE id = ?`,
+        [codTurma, docFinal, salaFinal, horFinal, existente.id]
+      );
+      return res.json({ mensagem: `Disciplina ${disc.codigo} adicionada ao seu semestre!`, id: existente.id });
+    }
+
+    const result = await run(
+      `INSERT INTO TB_TURMA_ALUNO (usuario_id, disciplina_id, codigo, nome, turma_codigo, docente, sala, ch_total, faltas_horas, horarios, cor, situacao)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 'Cursando')`,
+      [
+        Number(usuario_id),
+        disc.id,
+        disc.codigo,
+        disc.nome,
+        codTurma,
+        docFinal,
+        salaFinal,
+        disc.ch_total,
+        horFinal,
+        disc.cor
+      ]
+    );
+
+    return res.status(201).json({
+      mensagem: `Disciplina ${disc.codigo} adicionada ao seu semestre!`,
+      id: result.lastID
+    });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// CRUD 08 — Alterar dados da Turma Matriculada no Semestre (RFS23)
+app.put('/api/turmas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const atual = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [id]);
+    if (!atual) {
+      return res.status(404).json({ erro: 'Turma não encontrada.' });
+    }
+
+    if (req.body.codigo && String(req.body.codigo).trim().toUpperCase() !== atual.codigo) {
+      return res.status(400).json({ erro: 'A disciplina da matrícula não pode ser alterada.' });
+    }
+
+    const codTurma = req.body.turma_codigo ? String(req.body.turma_codigo).trim().toUpperCase() : (atual.turma_codigo || 'T01');
+    const docente = req.body.docente !== undefined ? String(req.body.docente).trim() : atual.docente;
+    const sala = req.body.sala !== undefined ? String(req.body.sala).trim() : atual.sala;
+    const horarios = req.body.horarios !== undefined ? String(req.body.horarios).trim().toUpperCase() : atual.horarios;
+
+    if (!/^[A-Z0-9]{2,6}$/.test(codTurma)) {
+      return res.status(400).json({ erro: 'O código da turma deve ter entre 2 e 6 caracteres alfanuméricos (ex: T01, T02).' });
+    }
+    if (docente.length < 3 || docente.length > 100) {
+      return res.status(400).json({ erro: 'O nome do(a) docente deve ter entre 3 e 100 caracteres.' });
+    }
+    if (sala.length < 2 || sala.length > 50) {
+      return res.status(400).json({ erro: 'O local/sala de aula deve ter entre 2 e 50 caracteres.' });
+    }
+    if (extrairSlotsHorarios(horarios).length === 0) {
+      return res.status(400).json({ erro: 'Informe os horários semanais da turma (ex: SEG-M1,SEG-M2).' });
+    }
+
+    const erroChoque = await verificarChoqueDeHorario(atual.usuario_id, horarios, atual.id);
+    if (erroChoque) {
+      return res.status(400).json({ erro: erroChoque });
+    }
+
+    await run(
+      `UPDATE TB_TURMA_ALUNO SET turma_codigo = ?, docente = ?, sala = ?, horarios = ? WHERE id = ?`,
+      [codTurma, docente, sala, horarios, atual.id]
+    );
+
+    const atualizada = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [atual.id]);
+    return res.json({
+      mensagem: `Turma ${atual.codigo} (${codTurma}) atualizada com sucesso!`,
+      turma: atualizada
+    });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// ============================================================================
+// CRUD 07 — MANUTENÇÃO DO HISTÓRICO / GRADE CURRICULAR DO ALUNO (RFS17 a RFS20)
+// ============================================================================
+function validarDadosHistoricoGrade(body) {
+  const situacao = String(body.situacao || 'Finalizada').trim();
+  const semestreCursado = String(body.semestre_cursado || '').trim();
+  const notaInformada = body.nota_final !== undefined && body.nota_final !== null && body.nota_final !== '';
+  const notaFinal = notaInformada ? Number(body.nota_final) : null;
+
+  if (!['Finalizada', 'Dispensada'].includes(situacao)) {
+    return { erro: 'A situação no histórico deve ser Finalizada (Aprovado) ou Dispensada (Equivalência).' };
+  }
+  if (!/^\d{4}\.[12]$/.test(semestreCursado)) {
+    return { erro: 'Informe o semestre cursado no formato AAAA.1 ou AAAA.2 (ex: 2025.2).' };
+  }
+  const [anoStr] = semestreCursado.split('.');
+  const ano = Number(anoStr);
+  if (ano < 2015 || ano > 2027) {
+    return { erro: 'O ano do semestre cursado deve estar entre 2015 e 2027.' };
+  }
+
+  if (situacao === 'Finalizada') {
+    if (!notaInformada || !Number.isFinite(notaFinal) || notaFinal < 6.0 || notaFinal > 10.0) {
+      return {
+        erro: 'Para registrar disciplina Concluída (Aprovado), a Nota Final deve ser entre 6.0 e 10.0.'
+      };
+    }
+  } else if (notaInformada && (!Number.isFinite(notaFinal) || notaFinal < 0 || notaFinal > 10)) {
+    return { erro: 'A nota final deve estar entre 0.0 e 10.0.' };
+  }
+
+  return { valores: { situacao, semestre_cursado: semestreCursado, nota_final: notaFinal } };
+}
+
+app.post('/api/aluno/grade', async (req, res) => {
+  try {
+    const { usuario_id, disciplina_id } = req.body;
+    if (!usuario_id || !disciplina_id) {
+      return res.status(400).json({ erro: 'Selecione a disciplina para registrar no histórico.' });
+    }
+    const disc = await get('SELECT * FROM TB_DISCIPLINA WHERE id = ?', [disciplina_id]);
+    if (!disc) {
+      return res.status(404).json({ erro: 'Disciplina não encontrada no catálogo.' });
+    }
+
+    const v = validarDadosHistoricoGrade(req.body);
+    if (v.erro) return res.status(400).json({ erro: v.erro });
+    const { situacao, semestre_cursado, nota_final } = v.valores;
+
     const existente = await get(
       'SELECT * FROM TB_TURMA_ALUNO WHERE usuario_id = ? AND codigo = ?',
       [usuario_id, disc.codigo]
     );
 
     if (existente) {
-      if (existente.situacao === 'Cursando') {
-        return res.status(400).json({ erro: 'Esta disciplina já está na sua grade deste semestre.' });
+      if (existente.situacao === 'Finalizada' || existente.situacao === 'Dispensada') {
+        return res.status(400).json({ erro: `A disciplina ${disc.codigo} já consta como concluída no seu histórico.` });
       }
       await run(
-        `UPDATE TB_TURMA_ALUNO SET situacao = 'Cursando', faltas_horas = 0 WHERE id = ?`,
-        [existente.id]
+        `UPDATE TB_TURMA_ALUNO
+         SET situacao = ?, semestre_cursado = ?, nota_final = ?, faltas_horas = 0
+         WHERE id = ?`,
+        [situacao, semestre_cursado, nota_final, existente.id]
       );
-      return res.json({ mensagem: `Disciplina ${disc.codigo} adicionada ao seu semestre!` });
+      return res.status(201).json({
+        mensagem: `Disciplina ${disc.codigo} registrada no histórico com sucesso!`,
+        id: existente.id
+      });
     }
 
     const result = await run(
-      `INSERT INTO TB_TURMA_ALUNO (usuario_id, disciplina_id, codigo, nome, docente, sala, ch_total, faltas_horas, horarios, cor, situacao)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 'Cursando')`,
+      `INSERT INTO TB_TURMA_ALUNO (usuario_id, disciplina_id, codigo, nome, docente, sala, ch_total, faltas_horas, horarios, cor, situacao, semestre_cursado, nota_final)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
       [
         Number(usuario_id),
         disc.id,
@@ -1149,13 +1389,62 @@ app.post('/api/turmas', async (req, res) => {
         disc.sala,
         disc.ch_total,
         disc.horarios,
-        disc.cor
+        disc.cor,
+        situacao,
+        semestre_cursado,
+        nota_final
       ]
     );
 
     return res.status(201).json({
-      mensagem: `Disciplina ${disc.codigo} adicionada ao seu semestre!`,
+      mensagem: `Disciplina ${disc.codigo} registrada no histórico com sucesso!`,
       id: result.lastID
+    });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/aluno/grade/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const atual = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [id]);
+    if (!atual) {
+      return res.status(404).json({ erro: 'Registro não encontrado no histórico do aluno.' });
+    }
+    if (req.body.codigo && String(req.body.codigo).trim().toUpperCase() !== atual.codigo) {
+      return res.status(400).json({ erro: 'O código da disciplina não pode ser alterado.' });
+    }
+
+    const v = validarDadosHistoricoGrade(req.body);
+    if (v.erro) return res.status(400).json({ erro: v.erro });
+    const { situacao, semestre_cursado, nota_final } = v.valores;
+
+    await run(
+      `UPDATE TB_TURMA_ALUNO SET situacao = ?, semestre_cursado = ?, nota_final = ? WHERE id = ?`,
+      [situacao, semestre_cursado, nota_final, atual.id]
+    );
+
+    return res.json({ mensagem: `Histórico da disciplina ${atual.codigo} atualizado com sucesso!` });
+  } catch (err) {
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+app.delete('/api/aluno/grade/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const atual = await get('SELECT * FROM TB_TURMA_ALUNO WHERE id = ?', [id]);
+    if (!atual) {
+      return res.status(404).json({ erro: 'Registro não encontrado no histórico do aluno.' });
+    }
+
+    await run('DELETE FROM TB_AVALIACAO WHERE turma_id = ?', [id]);
+    await run('DELETE FROM TB_FALTA_REGISTRO WHERE turma_id = ?', [id]);
+    await run('DELETE FROM TB_TURMA_ALUNO WHERE id = ?', [id]);
+
+    return res.json({
+      mensagem: `Registro de conclusão de ${atual.codigo} removido. A disciplina retornou para pendentes na grade.`
     });
   } catch (err) {
     return res.status(500).json({ erro: err.message });

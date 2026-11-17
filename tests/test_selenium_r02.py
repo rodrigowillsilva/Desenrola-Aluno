@@ -20,7 +20,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 
 BASE_URL = "http://localhost:3000"
-PAUSA_ENTRE_ACOES = 0.8
+PAUSA_ENTRE_ACOES = 1.5
 
 
 @pytest.fixture(scope="module")

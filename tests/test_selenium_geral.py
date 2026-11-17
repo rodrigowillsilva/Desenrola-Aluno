@@ -1,6 +1,6 @@
 """
 Suíte Completa de Testes Automatizados Mobile-First com Selenium WebDriver
-Desenrola Aluno — Releases 01, 02 e 03 (25 Casos de Teste Integrados)
+Desenrola Aluno — Releases 01, 02, 03 e 04 (33 Casos de Teste Integrados)
 
 Release 01 (CT36, CT01 a CT08):
 - CT36: Autenticação, RBAC, Grade Horária UNIFEI e Faltas
@@ -32,6 +32,16 @@ Release 03 (CT18 a CT25):
 - CT23: Validação de Avaliação (título, nota e duplicidade)
 - CT24: Consultar Avaliações com Filtros de Disciplina e Tipo
 - CT25: Alterar (lançar nota) e Excluir Avaliação
+
+Release 04 (CT26 a CT33):
+- CT26: Lançar Disciplina Concluída no Histórico / Grade do Aluno e Recalcular CH (RFS17)
+- CT27: Validação do Registro de Histórico (Nota Final < 6.0 e Semestre Inválido) (RN03)
+- CT28: Consultar Grade / Histórico do Aluno com Filtros de Período e Natureza (RFS18)
+- CT29: Editar Registro do Histórico (Código bloqueado) e Remover voltando para Pendente (RFS19/RFS20)
+- CT30: Matricular Nova Turma no Semestre com Código da Turma, Sala e Horários (RFS21)
+- CT31: Validação de Choque de Horário na Matrícula do Semestre (RN01)
+- CT32: Consultar Turmas do Semestre com Filtros de Dia da Semana e Busca Textual (RFS22)
+- CT33: Alterar Dados da Turma (validação de choque de horário) e Remover Matrícula do Semestre (RFS23/RFS24)
 """
 
 import re
@@ -46,7 +56,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 
 BASE_URL = "http://localhost:3000"
-PAUSA_ENTRE_ACOES = 0.25
+PAUSA_ENTRE_ACOES = 1.5
 
 
 @pytest.fixture(scope="module")
@@ -55,7 +65,7 @@ def driver():
 
     options = webdriver.ChromeOptions()
     # Comente a linha '--headless=new' se quiser assistir ao navegador na tela
-    options.add_argument("--headless=new")
+    # options.add_argument("--headless=new")
     options.add_argument("--window-size=430,920")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -500,6 +510,7 @@ def definir_valor(driver, element_id, valor):
         element_id,
         valor,
     )
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
 
 
 def faltas_acumuladas(driver):
@@ -520,7 +531,8 @@ def abrir_disciplina_sdes06(driver):
     card = WebDriverWait(driver, 5).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-disciplina-codigo='SDES06']"))
     )
-    clicar(driver, card)
+    driver.execute_script("arguments[0].click();", card)
+    time.sleep(PAUSA_ENTRE_ACOES)
     WebDriverWait(driver, 5).until(
         EC.visibility_of_element_located((By.ID, "view-disciplina-detalhe"))
     )
@@ -555,6 +567,7 @@ def selecionar_por_texto_parcial(driver, select_id, texto_parcial):
         select_id,
         texto_parcial,
     )
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
 
 
 def card_falta_por_texto(driver, texto):
@@ -755,4 +768,239 @@ def test_CT25_alterar_e_excluir_avaliacao(driver):
     alerta = aguardar_alerta(driver)
     assert "removida" in alerta.text.lower()
     assert card_avaliacao_por_titulo(driver, "Seminario de Gestao de Riscos") is None
+
+
+# ============================================================================
+# BLOCO 4: TESTES DA RELEASE 04 (HISTÓRICO/GRADE DO ALUNO E TURMAS DO SEMESTRE)
+# ============================================================================
+def abrir_tela_minha_grade(driver):
+    navs = driver.find_elements(By.ID, "student-bottom-nav")
+    if not navs or not navs[0].is_displayed():
+        fazer_login(driver, "aluno@unifei.edu.br", "Aluno123")
+
+    view = driver.find_element(By.ID, "view-aluno-progresso")
+    if not view.is_displayed():
+        driver.execute_script("abrirTelaProgressoAluno();")
+        WebDriverWait(driver, 5).until(
+            EC.visibility_of_element_located((By.ID, "view-aluno-progresso"))
+        )
+        time.sleep(PAUSA_ENTRE_ACOES)
+
+
+def abrir_tela_meu_semestre(driver):
+    navs = driver.find_elements(By.ID, "student-bottom-nav")
+    if not navs or not navs[0].is_displayed():
+        fazer_login(driver, "aluno@unifei.edu.br", "Aluno123")
+
+    view = driver.find_element(By.ID, "view-aluno-home")
+    if not view.is_displayed():
+        driver.execute_script("voltarParaHomeAluno();")
+        WebDriverWait(driver, 5).until(
+            EC.visibility_of_element_located((By.ID, "view-aluno-home"))
+        )
+        time.sleep(PAUSA_ENTRE_ACOES)
+
+
+def ch_obrigatoria_cumprida(driver):
+    texto = driver.find_element(By.ID, "ch-obrigatoria-texto").text
+    m = re.match(r"(\d+)h", texto)
+    return int(m.group(1)) if m else 0
+
+
+def test_CT26_lancar_disciplina_concluida_no_historico(driver):
+    abrir_tela_minha_grade(driver)
+    ch_antes = ch_obrigatoria_cumprida(driver)
+
+    driver.execute_script("prepararNovoHistoricoGrade();")
+    time.sleep(PAUSA_ENTRE_ACOES)
+
+    selecionar_por_texto_parcial(driver, "hist-grade-disciplina", "COM220")
+    selecionar_por_texto_parcial(driver, "hist-grade-situacao", "Finalizada")
+    definir_valor(driver, "hist-grade-semestre", "2025.2")
+    definir_valor(driver, "hist-grade-nota", "8.5")
+    driver.execute_script("salvarHistoricoGrade(new Event('submit'));")
+
+    alerta = aguardar_alerta(driver)
+    assert "registrada no histórico" in alerta.text.lower() or "sucesso" in alerta.text.lower()
+    assert ch_obrigatoria_cumprida(driver) == ch_antes + 64
+
+    texto_finalizadas = driver.find_element(By.ID, "lista-progresso-finalizadas").text
+    assert "COM220" in texto_finalizadas
+    assert "8.5" in texto_finalizadas
+
+
+def test_CT27_validar_registro_historico_grade(driver):
+    abrir_tela_minha_grade(driver)
+    driver.execute_script("prepararNovoHistoricoGrade();")
+    time.sleep(PAUSA_ENTRE_ACOES)
+
+    selecionar_por_texto_parcial(driver, "hist-grade-disciplina", "COM240")
+    selecionar_por_texto_parcial(driver, "hist-grade-situacao", "Finalizada")
+
+    definir_valor(driver, "hist-grade-semestre", "2025-3")
+    definir_valor(driver, "hist-grade-nota", "7.5")
+    driver.execute_script("salvarHistoricoGrade(new Event('submit'));")
+    alerta = aguardar_alerta(driver)
+    assert "aaaa.1" in alerta.text.lower() or "formato" in alerta.text.lower()
+
+    definir_valor(driver, "hist-grade-semestre", "2025.2")
+    definir_valor(driver, "hist-grade-nota", "4.5")
+    driver.execute_script("salvarHistoricoGrade(new Event('submit'));")
+    alerta = aguardar_alerta(driver)
+    assert "6.0 e 10.0" in alerta.text.lower()
+
+    driver.execute_script("fecharFormHistoricoGrade();")
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
+
+
+def test_CT28_consultar_grade_aluno_com_filtros(driver):
+    abrir_tela_minha_grade(driver)
+
+    selecionar_por_texto_parcial(driver, "filtro-grade-aluno-periodo", "4")
+    selecionar_por_texto_parcial(driver, "filtro-grade-aluno-tipo", "Obrigatória")
+    time.sleep(PAUSA_ENTRE_ACOES)
+
+    texto_finalizadas = driver.find_element(By.ID, "lista-progresso-finalizadas").text
+    assert "COM220" in texto_finalizadas
+    assert "COM110" not in texto_finalizadas
+
+    selecionar_por_texto_parcial(driver, "filtro-grade-aluno-periodo", "TODOS")
+    selecionar_por_texto_parcial(driver, "filtro-grade-aluno-tipo", "Optativa")
+    time.sleep(PAUSA_ENTRE_ACOES)
+
+    texto_faltam = driver.find_element(By.ID, "lista-progresso-faltam").text
+    assert "SIN430" in texto_faltam
+    assert "COM240" not in texto_faltam
+
+    selecionar_por_texto_parcial(driver, "filtro-grade-aluno-tipo", "TODOS")
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
+
+
+def test_CT29_editar_e_remover_registro_historico(driver):
+    abrir_tela_minha_grade(driver)
+    ch_antes = ch_obrigatoria_cumprida(driver)
+
+    card = driver.find_element(
+        By.CSS_SELECTOR, "#lista-progresso-finalizadas [data-progresso-codigo='COM220']"
+    )
+    hist_id = card.get_attribute("data-historico-id")
+    driver.execute_script(f"prepararEdicaoHistoricoGrade({hist_id});")
+    time.sleep(PAUSA_ENTRE_ACOES)
+
+    assert not driver.find_element(By.ID, "hist-grade-disciplina").is_enabled()
+
+    definir_valor(driver, "hist-grade-semestre", "2026.1")
+    definir_valor(driver, "hist-grade-nota", "9.5")
+    driver.execute_script("salvarHistoricoGrade(new Event('submit'));")
+
+    alerta = aguardar_alerta(driver)
+    assert "atualizado" in alerta.text.lower() or "sucesso" in alerta.text.lower()
+    texto_finalizadas = driver.find_element(By.ID, "lista-progresso-finalizadas").text
+    assert "9.5" in texto_finalizadas
+    assert "2026.1" in texto_finalizadas
+
+    driver.execute_script(f"window.confirm = () => true; removerHistoricoGrade({hist_id});")
+    alerta = aguardar_alerta(driver)
+    assert "removido" in alerta.text.lower()
+    assert ch_obrigatoria_cumprida(driver) == ch_antes - 64
+    assert "COM220" in driver.find_element(By.ID, "lista-progresso-faltam").text
+
+
+def test_CT30_matricular_turma_no_semestre(driver):
+    abrir_tela_meu_semestre(driver)
+
+    box = driver.find_element(By.ID, "box-add-disciplina-semestre")
+    if not box.is_displayed():
+        clicar(driver, driver.find_element(By.ID, "btn-abrir-add-semestre"))
+
+    selecionar_por_texto_parcial(driver, "select-disc-disponivel", "IEPG22")
+    definir_valor(driver, "turma-add-codigo", "T02")
+    definir_valor(driver, "turma-add-sala", "Sala 204 (IEPG)")
+    definir_valor(driver, "turma-add-docente", "Prof. Sandra Miranda")
+    definir_valor(driver, "turma-add-horarios", "QUA-T3,QUA-T4,QUA-T5")
+    driver.execute_script("adicionarDisciplinaNoSemestrePeloSelect(new Event('submit'));")
+
+    alerta = aguardar_alerta(driver)
+    assert "iepg22" in alerta.text.lower() and "adicionada" in alerta.text.lower()
+
+    texto_lista = driver.find_element(By.ID, "lista-disciplinas-aluno").text
+    assert "IEPG22 (T02)" in texto_lista
+
+
+def test_CT31_validar_choque_de_horario_matricula(driver):
+    abrir_tela_meu_semestre(driver)
+
+    box = driver.find_element(By.ID, "box-add-disciplina-semestre")
+    if not box.is_displayed():
+        clicar(driver, driver.find_element(By.ID, "btn-abrir-add-semestre"))
+
+    selecionar_por_texto_parcial(driver, "select-disc-disponivel", "COM220")
+    definir_valor(driver, "turma-add-codigo", "T01")
+    definir_valor(driver, "turma-add-horarios", "SEG-M1,SEG-M2")
+    driver.execute_script("adicionarDisciplinaNoSemestrePeloSelect(new Event('submit'));")
+
+    alerta = aguardar_alerta(driver)
+    assert "choque de horário" in alerta.text.lower()
+    assert "sdes06" in alerta.text.lower()
+
+    driver.execute_script("alternarBoxAdicionarDisciplinaAluno();")
+    time.sleep(PAUSA_ENTRE_ACOES * 0.6)
+
+
+def test_CT32_consultar_turmas_semestre_com_filtros(driver):
+    abrir_tela_meu_semestre(driver)
+
+    definir_valor(driver, "filtro-turma-busca", "IEPG22")
+    selecionar_por_texto_parcial(driver, "filtro-turma-dia", "QUA")
+    driver.execute_script("filtrarTurmasSemestreAluno();")
+    time.sleep(PAUSA_ENTRE_ACOES)
+
+    texto_lista = driver.find_element(By.ID, "lista-disciplinas-aluno").text
+    assert "IEPG22" in texto_lista
+    assert "SDES06" not in texto_lista
+
+    definir_valor(driver, "filtro-turma-busca", "")
+    selecionar_por_texto_parcial(driver, "filtro-turma-dia", "TODOS")
+    driver.execute_script("filtrarTurmasSemestreAluno();")
+    time.sleep(PAUSA_ENTRE_ACOES)
+    assert "SDES06" in driver.find_element(By.ID, "lista-disciplinas-aluno").text
+
+
+def test_CT33_alterar_e_remover_turma_do_semestre(driver):
+    abrir_tela_meu_semestre(driver)
+
+    card_iepg = WebDriverWait(driver, 5).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "[data-disciplina-codigo='IEPG22']"))
+    )
+    driver.execute_script("arguments[0].click();", card_iepg)
+    time.sleep(PAUSA_ENTRE_ACOES)
+    WebDriverWait(driver, 5).until(
+        EC.visibility_of_element_located((By.ID, "view-disciplina-detalhe"))
+    )
+
+    driver.execute_script("prepararEdicaoTurmaAtual();")
+    time.sleep(PAUSA_ENTRE_ACOES)
+
+    assert not driver.find_element(By.ID, "edit-turma-disciplina").is_enabled()
+
+    definir_valor(driver, "edit-turma-horarios", "SEG-M1,SEG-M2")
+    driver.execute_script("salvarEdicaoTurmaAtual(new Event('submit'));")
+    alerta = aguardar_alerta(driver)
+    assert "choque de horário" in alerta.text.lower()
+
+    definir_valor(driver, "edit-turma-codigo", "T03")
+    definir_valor(driver, "edit-turma-sala", "Auditório IEPG")
+    definir_valor(driver, "edit-turma-horarios", "SEX-T1,SEX-T2")
+    driver.execute_script("salvarEdicaoTurmaAtual(new Event('submit'));")
+
+    alerta = aguardar_alerta(driver)
+    assert "atualizada" in alerta.text.lower() or "sucesso" in alerta.text.lower()
+    assert "Turma T03" in driver.find_element(By.ID, "detalhe-turma-codigo").text
+    assert "Auditório IEPG" in driver.find_element(By.ID, "detalhe-sala").text
+
+    driver.execute_script("retirarDisciplinaDoSemestreAtual();")
+    alerta = aguardar_alerta(driver)
+    assert "retirada do semestre" in alerta.text.lower()
+    assert "IEPG22" not in driver.find_element(By.ID, "lista-disciplinas-aluno").text
+
 

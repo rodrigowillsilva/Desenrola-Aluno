@@ -122,21 +122,63 @@
           </button>
         </div>
 
-        <!-- Card rápido para o aluno puxar uma matéria que falta para o semestre atual -->
+        <!-- Card rápido para o aluno puxar uma matéria que falta para o semestre atual (CRUD 08 - Matrícula) -->
         <div id="box-add-disciplina-semestre" class="mobile-card hidden">
-          <h3>Adicionar ao Semestre</h3>
-          <form onsubmit="adicionarDisciplinaNoSemestrePeloSelect(event)">
+          <h3 id="titulo-form-turma-semestre">Adicionar ao Semestre</h3>
+          <form id="form-turma-semestre" onsubmit="adicionarDisciplinaNoSemestrePeloSelect(event)">
             <div class="field">
-              <label for="select-disc-disponivel">Escolha uma disciplina da sua grade</label>
-              <select id="select-disc-disponivel" required>
+              <label for="select-disc-disponivel">Escolha uma disciplina da sua grade *</label>
+              <select id="select-disc-disponivel" onchange="preencherPadroesTurmaPeloSelect()" required>
                 <option value="">Selecione a disciplina...</option>
               </select>
             </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="turma-add-codigo">Turma *</label>
+                <input type="text" id="turma-add-codigo" maxlength="6" value="T01" placeholder="Ex: T01" required>
+              </div>
+              <div class="field">
+                <label for="turma-add-sala">Sala / Local *</label>
+                <input type="text" id="turma-add-sala" maxlength="50" placeholder="Ex: I.1.2.05" required>
+              </div>
+            </div>
+            <div class="field">
+              <label for="turma-add-docente">Professor(a) da Turma *</label>
+              <input type="text" id="turma-add-docente" maxlength="100" placeholder="Ex: Prof. Roberto Affonso" required>
+            </div>
+            <div class="field">
+              <label for="turma-add-horarios">Horários da Turma (DIA-SLOT) *</label>
+              <input type="text" id="turma-add-horarios" placeholder="Ex: SEG-M1,SEG-M2,QUA-M1,QUA-M2" required>
+            </div>
             <div class="sheet-actions">
               <button type="submit" id="btn-confirmar-add-semestre" class="btn btn-primary btn-block">Colocar no Semestre</button>
-              <button type="button" class="btn btn-ghost btn-block" onclick="alternarBoxAdicionarDisciplinaAluno()">Cancelar</button>
+              <button type="button" id="btn-cancelar-add-semestre" class="btn btn-ghost btn-block" onclick="alternarBoxAdicionarDisciplinaAluno()">Cancelar</button>
             </div>
           </form>
+        </div>
+
+        <!-- Filtros de Consulta de Turmas do Semestre (CRUD 08 - RFS22) -->
+        <div class="mobile-card filter-box">
+          <div class="field-row">
+            <div class="field">
+              <label for="filtro-turma-busca">Disciplina ou Docente</label>
+              <input type="text" id="filtro-turma-busca" placeholder="Ex: SDES06, Roberto...">
+            </div>
+            <div class="field">
+              <label for="filtro-turma-dia">Dia da Semana</label>
+              <select id="filtro-turma-dia">
+                <option value="TODOS">Todos os dias</option>
+                <option value="SEG">Segunda-feira</option>
+                <option value="TER">Terça-feira</option>
+                <option value="QUA">Quarta-feira</option>
+                <option value="QUI">Quinta-feira</option>
+                <option value="SEX">Sexta-feira</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" id="btn-filtrar-turmas" class="btn btn-secondary btn-block" onclick="filtrarTurmasSemestreAluno()">
+            Filtrar Turmas do Semestre
+          </button>
         </div>
 
         <!-- Lista de Disciplinas do Aluno no Semestre -->
@@ -171,6 +213,7 @@
         <div class="mobile-card detail-header-card">
           <div class="detail-badge-row">
             <span id="detalhe-codigo" class="disc-code-pill">SDES06</span>
+            <span id="detalhe-turma-codigo" class="disc-ch-pill">Turma T01</span>
             <span id="detalhe-ch" class="disc-ch-pill">64h</span>
           </div>
           <h2 id="detalhe-nome" class="detail-title">Gerência de Projetos de Software</h2>
@@ -199,8 +242,11 @@
             </div>
           </div>
 
-          <!-- Ações do Semestre para a Disciplina (Finalizar ou Retirar do Semestre) -->
+          <!-- Ações do Semestre para a Disciplina (Editar Turma, Finalizar ou Retirar do Semestre) -->
           <div class="detail-status-actions">
+            <button type="button" id="btn-editar-turma" class="btn btn-secondary btn-block" onclick="prepararEdicaoTurmaAtual()">
+              Editar Dados da Turma
+            </button>
             <button type="button" id="btn-finalizar-disciplina" class="btn btn-success btn-block" onclick="finalizarDisciplinaAtual()">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                 <polyline points="20 6 9 17 4 12"/>
@@ -211,6 +257,39 @@
               Retirar do Semestre
             </button>
           </div>
+        </div>
+
+        <!-- CRUD 08 - Formulário de Edição da Turma Matriculada (Release 04 - RFS23) -->
+        <div id="card-form-editar-turma" class="mobile-card form-sheet hidden">
+          <h3 id="titulo-form-editar-turma">Editar Dados da Turma</h3>
+          <form id="form-editar-turma" onsubmit="salvarEdicaoTurmaAtual(event)">
+            <div class="field-row">
+              <div class="field">
+                <label for="edit-turma-disciplina">Disciplina *</label>
+                <input type="text" id="edit-turma-disciplina" disabled>
+              </div>
+              <div class="field">
+                <label for="edit-turma-codigo">Código da Turma *</label>
+                <input type="text" id="edit-turma-codigo" maxlength="6" placeholder="Ex: T01, T02" required>
+              </div>
+            </div>
+            <div class="field">
+              <label for="edit-turma-docente">Docente da Turma *</label>
+              <input type="text" id="edit-turma-docente" maxlength="100" required>
+            </div>
+            <div class="field">
+              <label for="edit-turma-sala">Sala / Laboratório *</label>
+              <input type="text" id="edit-turma-sala" maxlength="50" required>
+            </div>
+            <div class="field">
+              <label for="edit-turma-horarios">Horários da Semana (DIA-SLOT) *</label>
+              <input type="text" id="edit-turma-horarios" placeholder="Ex: SEG-M1,SEG-M2" required>
+            </div>
+            <div class="sheet-actions">
+              <button type="submit" id="btn-salvar-edicao-turma" class="btn btn-primary btn-block">Salvar Alterações da Turma</button>
+              <button type="button" id="btn-cancelar-edicao-turma" class="btn btn-ghost btn-block" onclick="fecharFormEdicaoTurma()">Cancelar</button>
+            </div>
+          </form>
         </div>
 
         <!-- Controle de Faltas da Disciplina -->
@@ -302,6 +381,70 @@
           <div>
             <h2>Progresso na Grade</h2>
             <p class="section-desc">Acompanhe o que você já fez, está cursando e ainda falta</p>
+          </div>
+          <button type="button" id="btn-novo-historico-grade" class="btn btn-primary btn-pill" onclick="prepararNovoHistoricoGrade()">
+            + Lançar Concluída
+          </button>
+        </div>
+
+        <!-- CRUD 07 - Formulário de Registro/Edição de Disciplina no Histórico do Aluno (Release 04 - RFS17 a RFS20) -->
+        <div id="card-form-historico-grade" class="mobile-card form-sheet hidden">
+          <h3 id="titulo-form-historico-grade">Registrar Disciplina Concluída</h3>
+          <form id="form-historico-grade" onsubmit="salvarHistoricoGrade(event)">
+            <input type="hidden" id="hist-grade-id">
+            <div class="field">
+              <label for="hist-grade-disciplina">Disciplina da Grade *</label>
+              <select id="hist-grade-disciplina" required></select>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="hist-grade-situacao">Situação *</label>
+                <select id="hist-grade-situacao" required>
+                  <option value="Finalizada">Concluída (Aprovado)</option>
+                  <option value="Dispensada">Dispensada (Equivalência)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="hist-grade-semestre">Semestre Cursado *</label>
+                <input type="text" id="hist-grade-semestre" placeholder="Ex: 2025.2" value="2025.2" required>
+              </div>
+            </div>
+            <div class="field">
+              <label for="hist-grade-nota">Nota Final Obtida (6.0 a 10.0) *</label>
+              <input type="number" id="hist-grade-nota" min="0" max="10" step="0.1" placeholder="Ex: 8.5">
+            </div>
+            <div class="sheet-actions">
+              <button type="submit" id="btn-salvar-historico-grade" class="btn btn-primary btn-block">Salvar no Histórico</button>
+              <button type="button" id="btn-cancelar-historico-grade" class="btn btn-ghost btn-block" onclick="fecharFormHistoricoGrade()">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Filtros de Consulta da Grade do Aluno (RFS18) -->
+        <div class="mobile-card filter-box">
+          <div class="field-row">
+            <div class="field">
+              <label for="filtro-grade-aluno-periodo">Período da Grade</label>
+              <select id="filtro-grade-aluno-periodo" onchange="renderizarTelaProgressoAluno()">
+                <option value="TODOS">Todos os períodos</option>
+                <option value="1">1º Período</option>
+                <option value="2">2º Período</option>
+                <option value="3">3º Período</option>
+                <option value="4">4º Período</option>
+                <option value="5">5º Período</option>
+                <option value="6">6º Período</option>
+                <option value="7">7º Período</option>
+                <option value="8">8º Período</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="filtro-grade-aluno-tipo">Natureza</label>
+              <select id="filtro-grade-aluno-tipo" onchange="renderizarTelaProgressoAluno()">
+                <option value="TODOS">Todas</option>
+                <option value="Obrigatória">Obrigatórias</option>
+                <option value="Optativa">Optativas</option>
+              </select>
+            </div>
           </div>
         </div>
 

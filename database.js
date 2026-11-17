@@ -168,6 +168,10 @@ async function initDatabase() {
 
   await adicionarColunaSeNaoExistir('TB_DISCIPLINA', 'tipo', "TEXT NOT NULL DEFAULT 'Obrigatória'");
   await adicionarColunaSeNaoExistir('TB_CURRICULO', 'ch_total', 'INTEGER NOT NULL DEFAULT 3200');
+  await adicionarColunaSeNaoExistir('TB_TURMA_ALUNO', 'turma_codigo', "TEXT NOT NULL DEFAULT 'T01'");
+  await adicionarColunaSeNaoExistir('TB_TURMA_ALUNO', 'semestre_letivo', "TEXT NOT NULL DEFAULT '2026.2'");
+  await adicionarColunaSeNaoExistir('TB_TURMA_ALUNO', 'semestre_cursado', "TEXT");
+  await adicionarColunaSeNaoExistir('TB_TURMA_ALUNO', 'nota_final', 'REAL');
 
   await seedInitialData();
 }
@@ -480,7 +484,11 @@ async function seedTurmasAluno(usuarioId) {
   if (existentes.total > 0) return;
 
   // Semeia 3 matérias já Finalizadas e 5 matérias que o aluno está Fazendo no semestre
-  const codigosFinalizadas = ['COM110', 'MAT001', 'COM111'];
+  const codigosFinalizadas = [
+    { codigo: 'COM110', semestre_cursado: '2025.1', nota_final: 8.5 },
+    { codigo: 'MAT001', semestre_cursado: '2025.1', nota_final: 7.0 },
+    { codigo: 'COM111', semestre_cursado: '2025.2', nota_final: 8.0 }
+  ];
   const codigosCursando = [
     { codigo: 'SDES06', faltas: 2 },
     { codigo: 'COM210', faltas: 4 },
@@ -489,13 +497,13 @@ async function seedTurmasAluno(usuarioId) {
     { codigo: 'MAT013', faltas: 0 }
   ];
 
-  for (const cod of codigosFinalizadas) {
-    const disc = await get('SELECT * FROM TB_DISCIPLINA WHERE codigo = ?', [cod]);
+  for (const item of codigosFinalizadas) {
+    const disc = await get('SELECT * FROM TB_DISCIPLINA WHERE codigo = ?', [item.codigo]);
     if (disc) {
       await run(
-        `INSERT INTO TB_TURMA_ALUNO (usuario_id, disciplina_id, codigo, nome, docente, sala, ch_total, faltas_horas, horarios, cor, situacao)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Finalizada')`,
-        [usuarioId, disc.id, disc.codigo, disc.nome, disc.docente, disc.sala, disc.ch_total, 0, disc.horarios, disc.cor]
+        `INSERT INTO TB_TURMA_ALUNO (usuario_id, disciplina_id, codigo, nome, docente, sala, ch_total, faltas_horas, horarios, cor, situacao, semestre_cursado, nota_final)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Finalizada', ?, ?)`,
+        [usuarioId, disc.id, disc.codigo, disc.nome, disc.docente, disc.sala, disc.ch_total, 0, disc.horarios, disc.cor, item.semestre_cursado, item.nota_final]
       );
     }
   }
